@@ -29,4 +29,11 @@ permissions:
     group: ubuntu   # 파일의 그룹(group)을 지정합니다.
     mode: 755      # 파일의 권한(mode)을 지정합니다. 여기서는 rwxr-xr-x로 설정됩니다.
 
-
+hooks:
+  ApplicationStop:
+    - location: ./config/applicationstop.sh
+      timeout: 60
+  
+  ApplicationStart:
+    - location: ./config/applicationstart.sh
+      timeout: 60
