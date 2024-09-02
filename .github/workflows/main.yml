@@ -1,0 +1,42 @@
+name: deploy to look-back backend
+on:
+  # 어떤 브랜치에서 어떤 동작 발생시 actions 를 실행시킬 것인지 정의
+  # 실습에서는 main branch 에 push가 발생했을 때로 정의함
+  push:
+    branches: [ main ]
+
+  workflow_dispatch:
+
+# job -> step -> action 순서로 정의
+jobs:
+  # build 라는 job을 정의
+  build:
+    # github에서 제공하는 ubuntu 환경에서 실행
+    # runs-on 항목 아래부터 step 정의
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout release
+      # uses: 이미 만들어진 action을 사용할 때 사용
+      # actions/checkout@4는 본 레파지토리의 내용을 checkout 하여 runner 서버에 저장함
+      uses: actions/checkout@v4
+
+    - name: archive to tar.gz
+      run: tar cvfz ./lookback_backend.tar.gz *
+
+    - name: AWS configure credentials
+      # aws 접속시 필요한 키 셋팅하는 사전 정의된 action 사용
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+
+    - name: upload to S3
+      run: aws s3 cp --region ap-northeast-2 ./lookback_backend.tar.gz s3://lookback-actions-deploy/lookback-backend/lookback_backend.tar.gz
+
+    - name: deploy with AWS codeDeploy
+
+      run: aws deploy create-deployment
+        --application-name datalake-deploy 
+        --deployment-group-name loopback-backend
+        --s3-location bucket=lookback-actions-deploy,bundleType=tgz,key=lookback-backend/lookback_backend.tar.gz
