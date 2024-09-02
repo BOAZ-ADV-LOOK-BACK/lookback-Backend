@@ -1,0 +1,32 @@
+# CodeDeploy의 어플리케이션 스펙을 정의하는 파일입니다. 
+# version은 필수적으로 명시해야 하며, 현재는 0.0만 지원됩니다.
+version: 0.0
+
+os: linux
+
+# 파일을 복사할 경로를 지정합니다.
+# files 항목에서는 source와 destination을 여러 개 지정할 수 있으며,
+# 하위 디렉토리별로 destination을 다르게 지정할 수 있습니다.
+# source가 디렉토리일 경우, 디렉토리 내부의 파일 및 서브 디렉토리들이 복사됩니다 (지정한 디렉토리 자체는 복사되지 않음).
+# source가 파일일 경우, 해당 파일이 복사됩니다.
+files:
+  - source: /
+    destination: /home/ubuntu/lookback-backend
+    
+# destination 경로에 동일한 파일이 이미 존재할 경우의 행동을 지정합니다.
+
+# 다음 세 가지 옵션 중 하나를 사용할 수 있습니다:
+# - DISALLOW: 동일한 파일이 존재할 경우 복사를 허용하지 않습니다.
+# - OVERWRITE: 동일한 파일이 존재할 경우 기존 파일을 덮어씁니다.
+# - RETAIN: 동일한 파일이 존재할 경우 기존 파일을 유지합니다.
+file_exists_behavior: OVERWRITE
+
+# 파일 복사 후 권한을 상세하게 지정할 수 있습니다.
+# pattern과 except 키워드를 통해 대상 파일을 구체적으로 지정할 수 있습니다.
+permissions:
+  - object: /home/ubuntu/lookback-backend
+    owner: ubuntu    # 파일의 소유자(owner)를 지정합니다.
+    group: ubuntu   # 파일의 그룹(group)을 지정합니다.
+    mode: 755      # 파일의 권한(mode)을 지정합니다. 여기서는 rwxr-xr-x로 설정됩니다.
+
+
