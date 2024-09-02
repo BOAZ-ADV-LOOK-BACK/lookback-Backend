@@ -38,5 +38,5 @@ jobs:
 
       run: aws deploy create-deployment
         --application-name datalake-deploy 
-        --deployment-group-name lookback-backend
+        --deployment-group-name backend-deploy
         --s3-location bucket=lookback-actions-deploy,bundleType=tgz,key=lookback-backend/lookback_backend.tar.gz
