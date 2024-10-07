@@ -1,12 +1,11 @@
 # app/api/v1/schemas/user.py
 
 from sqlalchemy import Column, Integer, String
-from app.db.database import Base  # Base´Â SQLAlchemyÀÇ declarative_base·Î »ý¼ºÇÑ ÀÎ½ºÅÏ½º
+from app.db.database import Base  # Baseï¿½ï¿½ SQLAlchemyï¿½ï¿½ declarative_baseï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Î½ï¿½ï¿½Ï½ï¿½
 
 class User(Base):
     __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True, index=True)
+    
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, index=True)
     age = Column(Integer)

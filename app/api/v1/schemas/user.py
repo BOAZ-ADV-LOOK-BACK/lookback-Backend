@@ -1,7 +1,9 @@
-# app/api/v1/crud/user.py
+# app/api/v1/schemas/user.py
 from pydantic import BaseModel, EmailStr
 
 class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
     age: int | None = None
     gender: str | None = None
     job: str | None = None
@@ -9,4 +11,4 @@ class UserCreate(BaseModel):
 
 class UserInDB(UserCreate):
     class Config:
-        from_attributes = True
+        orm_mode = True
