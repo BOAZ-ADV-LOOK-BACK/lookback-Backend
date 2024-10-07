@@ -1,3 +1,5 @@
+# app/api/v1/schemas/user.py
+
 from sqlalchemy import Column, Integer, String
 from app.db.database import Base  # Base는 SQLAlchemy의 declarative_base로 생성한 인스턴스
 
