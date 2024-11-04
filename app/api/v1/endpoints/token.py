@@ -20,6 +20,8 @@ SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly'
 ]
 
+SCOPES_STR = ' '.join(SCOPES)
+
 REDIRECT_URI='https://look-back.site/auth/callback'
 
 
@@ -44,7 +46,7 @@ def credentials_to_dict(credentials):
 async def login():
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE,
-        scopes=SCOPES,
+        scopes=SCOPES_STR,
         redirect_uri=REDIRECT_URI
     )
     authorization_url, state = flow.authorization_url(access_type='offline')
@@ -55,7 +57,7 @@ async def exchange_code_token(request: Request):
     
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE,
-        scopes=SCOPES,
+        scopes=SCOPES_STR,
         redirect_uri=REDIRECT_URI,
     )
     
