@@ -18,7 +18,7 @@ SCOPES = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapi
 
 # SCOPES_STR = ' '.join(SCOPES)
 
-REDIRECT_URI='https://look-back.site/auth/callback'
+REDIRECT_URI='https://api.look-back.site/auth/callback'
 
 
 # 요청 본문에 필요한 데이터 스키마 정의
