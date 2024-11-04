@@ -15,8 +15,9 @@ router = APIRouter()
 CLIENT_SECRETS_FILE = 'client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json'
 
 SCOPES = [
-    'https://www.googleapis.com/auth/userinfo.profile', 
-    'https://www.googleapis.com/auth/userinfo.email'
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/calendar.readonly'  # 추가된 부분
 ]
 SCOPES_STR = ' '.join(SCOPES)
 
