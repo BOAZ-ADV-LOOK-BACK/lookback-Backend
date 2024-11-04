@@ -16,8 +16,7 @@ CLIENT_SECRETS_FILE = 'client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8t
 
 SCOPES = [
     'https://www.googleapis.com/auth/userinfo.profile', 
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/calendar.readonly'
+    'https://www.googleapis.com/auth/userinfo.email'
 ]
 SCOPES_STR = ' '.join(SCOPES)
 
