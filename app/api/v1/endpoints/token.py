@@ -14,9 +14,11 @@ router = APIRouter()
 
 CLIENT_SECRETS_FILE = 'client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json'
 
-SCOPES = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/calendar.readonly'
-
-# SCOPES_STR = ' '.join(SCOPES)
+SCOPES = 'https://www.googleapis.com/auth/userinfo.profile', 
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/calendar.readonly'
+]
+SCOPES_STR = ' '.join(SCOPES)
 
 REDIRECT_URI='https://api.look-back.site/auth/callback'
 
