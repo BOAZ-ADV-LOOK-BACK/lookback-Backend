@@ -1,6 +1,8 @@
 from fastapi.responses import RedirectResponse
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from google_auth_oauthlib.flow import Flow
+from starlette.requests import Request
 import requests
 import logging
 
@@ -10,22 +12,71 @@ logging.basicConfig(level=logging.INFO)
 router = APIRouter()
 
 
-REDIRECT_URI = 'https://api.look-back.site/api/v1/save-token'
+CLIENT_SECRETS_FILE = 'client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json'
+
+SCOPES = [
+    'https://www.googleapis.com/auth/userinfo.profile', 
+    'https://www.googleapis.com/auth/userinfo.email', 
+    'https://www.googleapis.com/auth/calendar.readonly'
+]
+
+REDIRECT_URI='https://look-back.site/auth/callback'
+
 
 # 요청 본문에 필요한 데이터 스키마 정의
 class TokenData(BaseModel):
     access_token: str
 
-
+    
+       
 def credentials_to_dict(credentials):
     return {
-        'token': credentials.access_token,
-#        'refresh_token': credentials.refresh_token,
-        #'token_uri': credentials.token_uri,
-        #'client_id': credentials.client_id,
-        #'client_secret': credentials.client_secret,
-        #'scopes': credentials.scopes
+        'token': credentials.token,
+        'refresh_token': credentials.refresh_token,
+        'token_uri': credentials.token_uri,
+        'client_id': credentials.client_id,
+        'client_secret': credentials.client_secret,
+        'scopes': credentials.scopes
     }
+
+
+@router.get("/login")
+async def login():
+    flow = Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE,
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI
+    )
+    authorization_url, state = flow.authorization_url(access_type='offline')
+    return RedirectResponse(url=authorization_url)
+
+@router.get("/callback")
+async def exchange_code_token(request: Request):
+    
+    flow = Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE,
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI,
+    )
+    
+    authorization_response = str(request.url)
+    flow.fetch_token(authorization_response=authorization_response )
+    
+    if not flow.credentials:
+        raise HTTPException(status_code=400, detail="Failed to fetch token")
+    
+    credentials = flow.credentials
+    
+    response = RedirectResponse(url='/preprocess/calendar')
+    
+    #user info - 프로필, 이메일도 처리하는 함수나 API 하나 만들어서 추가
+    response.set_cookie(key='credentials', value=json.dumps(credentials_to_dict(credentials)), httponly=True)
+    
+    return response
+
+
+
+
 
 @router.post("/save-token")
 async def save_token(token_data: TokenData):
