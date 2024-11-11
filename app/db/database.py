@@ -1,24 +1,27 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
-import os 
-from dotenv import load_dotenv
+# PostgreSQL URL
+SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://lookback_user:pass1234@172.31.19.46/lookback"
 
-load_dotenv()
+# 비동기 엔진 생성
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 
-DB_PWD = os.environ.get("DB_PWD")
+# 비동기 세션 설정
+async_session = sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
-SQLALCHEMY_DATABASE_URL = f"mysql://ubuntu:{DB_PWD}@localhost:3306/lookback"
-
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+# Base 클래스 생성
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# 비동기 DB 세션 의존성
+async def get_db() -> AsyncSession:
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
