@@ -1,6 +1,7 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, Date, DateTime
 from sqlalchemy.sql import func
 from app.db.database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -13,5 +14,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
     # 추가 필드들
     is_new_user = Column(Boolean, default=True)  # 신규 사용자 여부
+    birth = Column(String, nullable=True)          # 생년월일
+    gender = Column(String, nullable=True)        # 성별
+    job = Column(String, nullable=True)           # 직업
+    hobby = Column(String, nullable=True)         # 취미
