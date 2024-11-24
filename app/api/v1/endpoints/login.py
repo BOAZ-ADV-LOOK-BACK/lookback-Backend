@@ -69,6 +69,9 @@ async def google_login(
                 google_id=user_info["id"]
             )
 
+            # 캘린더 데이터 출력 테스트
+            await google.get_calendar_data(auth_request.code)
+
             return {
                 "success": True,
                 "isNewUser": is_new_user,
