@@ -34,13 +34,13 @@ async def get_access_token(code):
     return token_info
 
 
-# ### 캘린더 데이터 통째로 받아오는 함수
-# # parameter - authorization code
-# # return - json type의 calendar data
-# async def get_calendar_data(code):
+### 캘린더 데이터 통째로 받아오는 함수
+# parameter - authorization code
+# return - json type의 calendar data
+async def get_calendar_data(code):
     
-#     # access token 받아오기
-#     token_info = get_access_token(code)
+    # access token 받아오기
+    token_info = await get_access_token(code)
 
-#     # calendar data 요청
+    # calendar data 요청
 
