@@ -5,3 +5,4 @@ __pycache__/
 *.pyd
 *.db
 docker-compose.override.yml
+client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json

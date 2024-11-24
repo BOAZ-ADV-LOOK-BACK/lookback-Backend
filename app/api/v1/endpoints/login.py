@@ -48,7 +48,7 @@ async def google_login(
 ):
     try:
         logger.info("Starting login process")
-        
+        print(auth_request.code)
         # 구글 콘솔에 access token 불러오기
         token_info = await google.get_access_token(auth_request.code)
 
