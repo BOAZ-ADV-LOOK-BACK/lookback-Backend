@@ -27,35 +27,13 @@ async def get_access_token(code):
         "grant_type": "authorization_code",
     }
 
+    # 액세스 토큰 요청
     async with httpx.AsyncClient() as client:
         response = await client.post(token_url, data=token_data)  # 데이터는 body로 전송
         # response.raise_for_status()
         print("responose: ", response)
         print("Full Response Text: ", response.text)  # 서버에서 반환한 원본 데이터 출력
         return response.json()  # Access Token 포함된 응답 반환
-
-    # 액세스 토큰 요청
-    try:
-        async with httpx.AsyncClient() as client:
-            print("token_data: ", token_data)
-
-            token_response = await client.post(token_url, data=token_data)
-            token_info = token_response.json()
-
-        return token_info
-
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Google token request failed: {e.response.json()}")
-        raise HTTPException(
-            status_code=e.response.status_code,
-            detail=f"구글 토큰 요청 오류: {e.response.json()}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error during token request: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"내부 서버 오류: {str(e)}"
-        )
 
     
 
@@ -64,10 +42,8 @@ async def get_access_token(code):
 # parameter - authorization code
 # return - json type의 calendar data
 @router.get("/calendar-origin")
-async def get_calendar_data(code):
-
-    # access token 받아오기
-    token_info = await get_access_token(code)
+async def get_calendar_data(code, token_info):
+    
 
     # calendar data 요청
     client = httpx.AsyncClient()

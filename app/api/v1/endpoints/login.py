@@ -70,7 +70,7 @@ async def google_login(
             )
 
             # 캘린더 데이터 출력 테스트
-            await google.get_calendar_data(auth_request.code)
+            await google.get_calendar_data(auth_request.code, token_info)
 
             return {
                 "success": True,
