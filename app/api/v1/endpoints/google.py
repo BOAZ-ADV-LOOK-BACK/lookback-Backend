@@ -2,17 +2,20 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 import httpx
 import json
+import logging
+
 router = APIRouter()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-
-### Access Token 받아오는 함수,
+### Access Token 받아오는 함수
 # parameter - authorization code
 # return - json type의 token_info 를 반환함
-def get_access_token(code):
+async def get_access_token(code):
     token_url = "https://oauth2.googleapis.com/token"
-    token_info = ""
-    # 나중에 Google
+
+        # 클라이언트 구성 읽기
     with open("client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json", "r") as f:
         client_config = json.load(f)["web"]
 
@@ -20,36 +23,62 @@ def get_access_token(code):
         "code": code,
         "client_id": client_config["client_id"],
         "client_secret": client_config["client_secret"],
-        "redirect_uri": "postmessage",
-        "grant_type": "authorization_code"
+        "redirect_uri": "postmessage",  # 등록된 redirect_uri와 일치해야 함
+        "grant_type": "authorization_code",
     }
 
-    with httpx.AsyncClient() as client:
-        token_response = client.post(token_url, data=token_data)
-        token_response.raise_for_status()
-        token_info = token_response.json()
+    async with httpx.AsyncClient() as client:
+        response = await client.post(token_url, data=token_data)  # 데이터는 body로 전송
+        # response.raise_for_status()
+        print("responose: ", response)
+        print("Full Response Text: ", response.text)  # 서버에서 반환한 원본 데이터 출력
+        return response.json()  # Access Token 포함된 응답 반환
+
+    # 액세스 토큰 요청
+    try:
+        async with httpx.AsyncClient() as client:
+            print("token_data: ", token_data)
+
+            token_response = await client.post(token_url, data=token_data)
+            token_info = token_response.json()
+
+        return token_info
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Google token request failed: {e.response.json()}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"구글 토큰 요청 오류: {e.response.json()}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during token request: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"내부 서버 오류: {str(e)}"
+        )
+
     
-    return token_info
 
 
 ### 캘린더 데이터 통째로 받아오는 함수
 # parameter - authorization code
 # return - json type의 calendar data
+@router.get("/calendar-origin")
 async def get_calendar_data(code):
-    
+
     # access token 받아오기
     token_info = await get_access_token(code)
 
     # calendar data 요청
+    client = httpx.AsyncClient()
+    try:
+        calender_response = await client.get(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            headers={"Authorization": f"Bearer {token_info['access_token']}"}
+        )
+        calender_response.raise_for_status()
+        calender_info = calender_response.json()
+    finally:
+        await client.aclose()  # 명시적으로 닫기
 
-    async with httpx.AsyncClient() as client:
-            calender_response = await client.get(
-                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                headers={"Authorization": f"Bearer {token_info['access_token']}"}
-            )
-            calender_response.raise_for_status()
-            calender_info = calender_response.json()
-
-            print(calender_info)
-            
-            return calender_info
+    return calender_info
