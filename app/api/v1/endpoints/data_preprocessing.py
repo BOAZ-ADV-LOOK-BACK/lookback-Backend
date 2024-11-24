@@ -57,22 +57,22 @@ def data_preprocessing(events, calendar_id):
         'description': item.get('description')
     }
 
-        # start¿Í end¿¡¼­ date ¶Ç´Â dateTime Ã³¸®
-        if 'date' in item['start']:  # date°¡ ÀÖÀ» °æ¿ì
+        # startï¿½ï¿½ endï¿½ï¿½ï¿½ï¿½ date ï¿½Ç´ï¿½ dateTime Ã³ï¿½ï¿½
+        if 'date' in item['start']:  # dateï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             event_info['start_date'] = item['start'].get('date')
             event_info['end_date'] = (datetime.strptime(item['end'].get('date'), '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-        elif 'dateTime' in item['start']:  # dateTimeÀÌ ÀÖÀ» °æ¿ì
+        elif 'dateTime' in item['start']:  # dateTimeï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             event_info['start_dateTime'] = item['start'].get('dateTime')
             event_info['end_dateTime'] = item['end'].get('dateTime')
 
-            # dateTime¿¡¼­ ³¯Â¥¸¸ ÃßÃâÇÏ¿© date·Î ÀúÀå
+            # dateTimeï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Â¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ dateï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             event_info['start_date'] = event_info['start_dateTime'][:10]
             event_info['end_date'] = event_info['end_dateTime'][:10]
             
             if event_info['end_dateTime'].endswith("T00:00:00+09:00") or event_info['end_dateTime'].endswith("T00:00:00Z"):
-                # end_dateTimeÀ» Àü³¯ 23:59:59·Î º¯°æ
+                # end_dateTimeï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 23:59:59ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
                 event_info['end_dateTime'] = (datetime.strptime(event_info['end_date'], '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%dT23:59:59+09:00')
-                # end_dateµµ Àü³¯·Î º¯°æ
+                # end_dateï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
                 event_info['end_date'] = (datetime.strptime(event_info['end_date'], '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
 
         extracted_info['items'].append(event_info)
@@ -108,7 +108,7 @@ def credentials_to_dict(credentials):
 #        'client_secret': credentials.client_secret,
 #        'scopes': credentials.scopes
     }
-        
+
 @router.get("/calendar")
 async def get_calendar(request: Request):
     credentials_info = request.cookies.get('credentials')
