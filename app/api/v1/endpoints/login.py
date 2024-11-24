@@ -1,3 +1,5 @@
+# look-back 서비스 로그인 관련
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import httpx
@@ -6,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.models.user import User
+
+from app.api.v1.endpoints import google
+
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -43,24 +48,12 @@ async def google_login(
 ):
     try:
         logger.info("Starting login process")
-        token_url = "https://oauth2.googleapis.com/token"
+        
+        # 구글 콘솔에 access token 불러오기
+        token_info = google.get_access_token(auth_request.code)
 
-        with open("client_secret_639048076528-0mqbo91cf5t0fq5604u0tblqnaka8thp.apps.googleusercontent.com.json", "r") as f:
-            client_config = json.load(f)["web"]
-
-        token_data = {
-            "code": auth_request.code,
-            "client_id": client_config["client_id"],
-            "client_secret": client_config["client_secret"],
-            "redirect_uri": "postmessage",
-            "grant_type": "authorization_code"
-        }
-
+        # 구글 콘솔에 사용자 정보 호출하도록 불러오기
         async with httpx.AsyncClient() as client:
-            token_response = await client.post(token_url, data=token_data)
-            token_response.raise_for_status()
-            token_info = token_response.json()
-
             user_info_response = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
                 headers={"Authorization": f"Bearer {token_info['access_token']}"}
