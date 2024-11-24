@@ -19,11 +19,11 @@ router = APIRouter()
 @router.get("/dashboard-data")
 async def get_dashboard_data(code):
     # token_info 예시는 print 후 확인 요망
-    token_info = google.get_access_token(code)
+    token_info = await google.get_access_token(code)
 
 
     # 1. 캘린더 데이터 요청
-    calendar_data_origin = google.get_calendar_data(code)
+    calendar_data_origin = await google.get_calendar_data(code)
 
     # 2. 전처리
     # data_preprocessing.py 내부 함수 참고

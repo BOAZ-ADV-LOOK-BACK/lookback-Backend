@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints.get_authorization import router as auth_router
 from app.api.v1.endpoints.data_preprocessing import router as preprocess_router
 from app.api.v1.endpoints import login, users, google, calendar
 import os

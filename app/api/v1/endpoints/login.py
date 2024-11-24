@@ -50,7 +50,7 @@ async def google_login(
         logger.info("Starting login process")
         
         # 구글 콘솔에 access token 불러오기
-        token_info = google.get_access_token(auth_request.code)
+        token_info = await google.get_access_token(auth_request.code)
 
         # 구글 콘솔에 사용자 정보 호출하도록 불러오기
         async with httpx.AsyncClient() as client:
