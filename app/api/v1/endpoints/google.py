@@ -42,7 +42,7 @@ async def get_access_token(code):
 # parameter - authorization code
 # return - json type의 calendar data
 @router.get("/calendar-list")
-async def get_calendar_data(code, token_info):
+async def get_calendar_data(token_info):
     # calendar list 요청
     client = httpx.AsyncClient()
     try:
@@ -60,12 +60,12 @@ async def get_calendar_data(code, token_info):
 
 
 @router.get("/events")
-async def get_events_data(code, token_info, cal_id):
+async def get_events_data(token_info, cal_id):
     # calendar events 데이터 요청
     client = httpx.AsyncClient()
-    try:
+    try:    
         response = await client.get(
-            "https://www.googleapis.com/calendar/v3/calendars/{cal_id}",
+            f"https://www.googleapis.com/calendar/v3/calendars/{cal_id}",
             headers={"Authorization": f"Bearer {token_info['access_token']}"}
         )
         response.raise_for_status()
