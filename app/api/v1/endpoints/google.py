@@ -38,23 +38,39 @@ async def get_access_token(code):
     
 
 
-### 캘린더 데이터 통째로 받아오는 함수
+### 캘린더 리스트 요청(캘린더 id 리스트를 받아야 함)
 # parameter - authorization code
 # return - json type의 calendar data
-@router.get("/calendar-origin")
+@router.get("/calendar-list")
 async def get_calendar_data(code, token_info):
-    
-
-    # calendar data 요청
+    # calendar list 요청
     client = httpx.AsyncClient()
     try:
-        calender_response = await client.get(
-            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        response = await client.get(
+            "https://www.googleapis.com/calendar/v3/users/me/calendarList",
             headers={"Authorization": f"Bearer {token_info['access_token']}"}
         )
-        calender_response.raise_for_status()
-        calender_info = calender_response.json()
+        response.raise_for_status()
+        calender_list = response.json()
     finally:
         await client.aclose()  # 명시적으로 닫기
 
-    return calender_info
+    return calender_list
+
+
+
+@router.get("/events")
+async def get_calendar_data(code, token_info, cal_id):
+    # calendar events 데이터 요청
+    client = httpx.AsyncClient()
+    try:
+        response = await client.get(
+            "https://www.googleapis.com/calendar/v3/calendars/{cal_id}",
+            headers={"Authorization": f"Bearer {token_info['access_token']}"}
+        )
+        response.raise_for_status()
+        events_info = response.json()
+    finally:
+        await client.aclose()  # 명시적으로 닫기
+
+    return events_info
