@@ -60,7 +60,7 @@ async def get_calendar_data(code, token_info):
 
 
 @router.get("/events")
-async def get_calendar_data(code, token_info, cal_id):
+async def get_events_data(code, token_info, cal_id):
     # calendar events 데이터 요청
     client = httpx.AsyncClient()
     try:
