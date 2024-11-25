@@ -1,5 +1,5 @@
-
 import boto3
+import os
 
 load_dotenv()
 
