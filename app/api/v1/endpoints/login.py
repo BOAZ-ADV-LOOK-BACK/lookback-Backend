@@ -63,7 +63,7 @@ async def google_login(
             
             logger.info("dynamo function start")
             #캘린더 리스트 추출
-            #put_calendar_list(token_info['access_token'], user_info["email"])
+            put_calendar_list(token_info['access_token'], user_info["email"])
             
             logger.info("dynamo function end")
             
