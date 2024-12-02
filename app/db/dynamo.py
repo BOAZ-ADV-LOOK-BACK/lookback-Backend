@@ -56,7 +56,7 @@ def put_calendar_list(access_token, user_email):
     #데이터 형식 변경 
     cal_list = create_dynamodb_data(user_email, cal_data)
     
-    #dynamoDB 적재 가능하도록 변경
+    #dynamoDB 적재 가능한 데이터 타입으로 변경 
     cal_list_data = {key: serializer.serialize(value) for key, value in cal_list.items()}
     
     
