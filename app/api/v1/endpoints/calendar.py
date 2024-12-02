@@ -1,7 +1,7 @@
 # 캘린더 관련 API 모음
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from app.api.v1.endpoints import login, users, google, calendar, data_preprocessing
+from app.api.v1.endpoints import login, users, google, calendar 
 
 
 import httpx
