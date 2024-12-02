@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.models.user import User
-
+from app.db.dynamo import put_calendar_list
 from app.api.v1.endpoints import google
 
 import logging
@@ -60,7 +60,13 @@ async def google_login(
             )
             user_info_response.raise_for_status()
             user_info = user_info_response.json()
-
+            
+            logger.info("dynamo function start")
+            #캘린더 리스트 추출
+            #put_calendar_list(token_info['access_token'], user_info["email"])
+            
+            logger.info("dynamo function end")
+            
             # DB에서 사용자 조회 또는 생성
             user, is_new_user = await get_or_create_user(
                 db,
@@ -68,7 +74,7 @@ async def google_login(
                 name=user_info.get("name", ""),
                 google_id=user_info["id"]
             )
-
+            
             return {
                 "success": True,
                 "isNewUser": is_new_user,
@@ -78,6 +84,7 @@ async def google_login(
                     "picture": user_info.get("picture", "")
                 }
             }
+        
 
     except httpx.HTTPError as e:
         logger.error(f"HTTP error during Google API call: {str(e)}")
