@@ -13,9 +13,13 @@ from app.api.v1.endpoints import google
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+logger.addHandler(stream_handler)
 router = APIRouter()
 
 class GoogleAuthRequest(BaseModel):
@@ -46,11 +50,15 @@ async def google_login(
     auth_request: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db)
 ):
+    print("Starting login process", flush=True)
+    logger.info("Starting login process")
     try:
         logger.info("Starting login process")
         print(auth_request.code)
         # 구글 콘솔에 access token 불러오기
         token_info = await google.get_access_token(auth_request.code)
+
+        print(type(token_info), flush=True)
 
         # 구글 콘솔에 사용자 정보 호출하도록 불러오기
         async with httpx.AsyncClient() as client:
@@ -60,13 +68,17 @@ async def google_login(
             )
             user_info_response.raise_for_status()
             user_info = user_info_response.json()
-            
+
+            # user_info_email = json.loads(user_info)
+            # token_info = json.loads(token_info)
+            logger.info(f"Token info type: {type(token_info)}")
+            logger.info(f"Access token: {token_info.get('access_token')}")
             logger.info("dynamo function start")
             #캘린더 리스트 추출
-            put_calendar_list(token_info['access_token'], user_info["email"])
+            await put_calendar_list(token_info['access_token'])
             
             logger.info("dynamo function end")
-            
+           
             # DB에서 사용자 조회 또는 생성
             user, is_new_user = await get_or_create_user(
                 db,
