@@ -89,9 +89,14 @@ async def put_calendar_list(access_token):
 
 #DB에 저장할 Item을 파라미터로 입력 받기 
 def push_to_dynamodb_calendar_list(dynamodb_item):
+        serializer = TypeSerializer()
+        serialized_item = {key: serializer.serialize(value) for key, value in dynamodb_item.items()}
+        logger.info("DynamoDB에 넣을 직렬화된 데이터:")
+        logger.info(serialized_item)
+
         dynamodb_client.put_item(
             TableName="lookback-calendar-list", 
-            Item=dynamodb_item
+            Item=serialized_item
         )
 def push_to_dynamodb_calendar_event(dynamodb_item):
     dynamodb_client.put_item(
