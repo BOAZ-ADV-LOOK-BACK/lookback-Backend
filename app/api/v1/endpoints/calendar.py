@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, logger
 from pydantic import BaseModel
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-
+from app.models.user import User
 import httpx
 import json
 
