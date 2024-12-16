@@ -32,8 +32,8 @@ async def get_access_token(code):
     async with httpx.AsyncClient() as client:
         response = await client.post(token_url, data=token_data)  # 데이터는 body로 전송
         # response.raise_for_status()
-        print("responose: ", response)
-        print("Full Response Text: ", response.text)  # 서버에서 반환한 원본 데이터 출력
+        # print("responose: ", response)
+        # print("Full Response Text: ", response.text)  # 서버에서 반환한 원본 데이터 출력
         return response.json()  # Access Token 포함된 응답 반환
 
     

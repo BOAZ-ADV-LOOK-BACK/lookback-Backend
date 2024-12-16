@@ -2,6 +2,7 @@
 # look-back 서비스 로그인 관련
 
 from datetime import timedelta
+import traceback
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import httpx
