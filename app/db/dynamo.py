@@ -95,10 +95,10 @@ def push_to_dynamodb_calendar_list(dynamodb_item):
         logger.info("DynamoDB에 넣을 직렬화된 데이터:")
         logger.info(serialized_item)
 
-        dynamodb_client.put_item(
-            TableName="lookback-calendar-list", 
-            Item=serialized_item
-        )
+        table = dynamodb_client.Table("lookback-calendar-list")
+        table.put_item(Item=serialized_item)
+        logger.info("Successfully inserted item into DynamoDB")
+        
 def push_to_dynamodb_calendar_event(dynamodb_item):
     dynamodb_client.put_item(
             TableName="lookback-db", 
