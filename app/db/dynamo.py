@@ -1,3 +1,4 @@
+import traceback
 from app.api.v1.endpoints import google, login
 from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer
@@ -71,11 +72,11 @@ async def put_calendar_list(access_token):
     #캘린더 리스트 데이터 넣기 
     try:
         push_to_dynamodb_calendar_list(cal_list)
-        logger.info("Successfully pushed calendar list data for user")
     except ClientError as e:
-        logger.error("Error saving calendar list")
+        logger.error(f"ClientError: {e.response['Error']['Message']}")
     except Exception as e:
-        logger.error("Unexpected error saving calendar list for user")
+        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"상세 에러: {traceback.format_exc()}")
 
 #def put_calendar_events():
 
