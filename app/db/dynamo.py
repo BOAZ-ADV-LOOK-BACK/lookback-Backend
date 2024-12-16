@@ -13,10 +13,11 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 AWS_ACCESS_kEY_ID = os.environ.get("AWS_ACCESS_kEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-dynamodb_client = boto3.client('dynamodb',
+dynamodb_client = boto3.resource('dynamodb',
                             region_name='ap-northeast-2',
                             aws_access_key_id=AWS_ACCESS_kEY_ID,
                             aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+
 #전체 데이터에서 dynamoDB에서 적재할 데이터 형식으로 변경 
 def create_dynamodb_data(user_email, cal_list):
 
