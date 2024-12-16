@@ -21,3 +21,4 @@ class User(Base):
     gender = Column(String, nullable=True)        # 성별
     job = Column(String, nullable=True)           # 직업
     hobby = Column(String, nullable=True)         # 취미
+    refresh_token = Column(String)

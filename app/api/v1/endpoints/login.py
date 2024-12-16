@@ -1,9 +1,11 @@
 # look-back 서비스 로그인 관련
 
+from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import httpx
 import json
+from app.core.security import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
@@ -50,45 +52,37 @@ async def google_login(
     auth_request: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    print("Starting login process", flush=True)
-    logger.info("Starting login process")
     try:
-        logger.info("Starting login process")
-        print(auth_request.code)
-        # 구글 콘솔에 access token 불러오기
+        # 구글 access token과 refresh token 획득
         token_info = await google.get_access_token(auth_request.code)
-
-        print(type(token_info), flush=True)
-
-        # 구글 콘솔에 사용자 정보 호출하도록 불러오기
+        
         async with httpx.AsyncClient() as client:
             user_info_response = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
                 headers={"Authorization": f"Bearer {token_info['access_token']}"}
             )
-            user_info_response.raise_for_status()
             user_info = user_info_response.json()
-
-            # user_info_email = json.loads(user_info)
-            # token_info = json.loads(token_info)
-            logger.info(f"Token info type: {type(token_info)}")
-            logger.info(f"Access token: {token_info.get('access_token')}")
-            logger.info("dynamo function start")
-            #캘린더 리스트 추출
-            await put_calendar_list(token_info['access_token'])
             
-            logger.info("dynamo function end")
-           
-            # DB에서 사용자 조회 또는 생성
+            # 사용자 생성 또는 업데이트
             user, is_new_user = await get_or_create_user(
                 db,
                 email=user_info["email"],
                 name=user_info.get("name", ""),
-                google_id=user_info["id"]
+                google_id=user_info["id"],
+                refresh_token=token_info.get('refresh_token')  # refresh token 저장
+            )
+            
+            # JWT 토큰 생성
+            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": user.email},
+                expires_delta=access_token_expires
             )
             
             return {
                 "success": True,
+                "access_token": access_token,
+                "token_type": "bearer",
                 "isNewUser": is_new_user,
                 "user": {
                     "email": user.email,
@@ -96,17 +90,5 @@ async def google_login(
                     "picture": user_info.get("picture", "")
                 }
             }
-        
-
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error during Google API call: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"구글 인증 실패: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"내부 서버 오류: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
