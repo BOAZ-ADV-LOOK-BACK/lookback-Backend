@@ -58,9 +58,7 @@ async def put_calendar_list(access_token):
     serializer = TypeSerializer()
     
     token_info = {"access_token": access_token}
- 
-    #loop = asyncio.new_event_loop()
-    #asyncio.set_event_loop(loop)
+
     cal_data = await google.get_calendar_data(token_info)
     logger.info("Successfully get calendar data")
     user_email = await get_google_email(access_token)
@@ -68,11 +66,11 @@ async def put_calendar_list(access_token):
     cal_list = create_dynamodb_data(user_email, cal_data)
 
     #dynamoDB 적재 가능한 데이터 타입으로 변경 
-    cal_list_data = {key: serializer.serialize(value) for key, value in cal_list.items()}
+    # cal_list_data = {key: serializer.serialize(value) for key, value in cal_list.items()}
 
     #캘린더 리스트 데이터 넣기 
     try:
-        push_to_dynamodb_calendar_list(cal_list_data)
+        push_to_dynamodb_calendar_list(cal_list)
         logger.info("Successfully pushed calendar list data for user")
     except ClientError as e:
         logger.error("Error saving calendar list")
