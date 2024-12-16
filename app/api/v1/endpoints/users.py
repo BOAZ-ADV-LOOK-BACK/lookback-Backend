@@ -90,25 +90,20 @@ async def update_profile(
 
 @router.get("/me")
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
-    """JWT 토큰으로 현재 로그인한 사용자의 정보를 반환합니다."""
+    """JWT 토큰으로 현재 로그인한 사용자의 이메일을 반환합니다."""
+    logger.info(f"'me' 엔드포인트 호출됨: {current_user.email}")
+    
     return {
-        "full_name": current_user.full_name,
-        "email": current_user.email,
-        "birth": current_user.birth,
-        "gender": current_user.gender,
-        "job": current_user.job,
-        "hobby": current_user.hobby,
-        "interest": current_user.interest if hasattr(current_user, 'interest') else None,
-        "is_new_user": current_user.is_new_user
+        "email": current_user.email
     }
 
-@router.get("/get-user-email")
-async def get_user_email(email: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"email": user.email}
+# @router.get("/get-user-email")
+# async def get_user_email(email: str, db: AsyncSession = Depends(get_db)):
+#     result = await db.execute(select(User).where(User.email == email))
+#     user = result.scalar_one_or_none()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return {"email": user.email}
 
 @router.get("/get-user-info")
 async def get_user_info(email: str, db: AsyncSession = Depends(get_db)):
