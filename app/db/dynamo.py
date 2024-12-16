@@ -21,22 +21,18 @@ dynamodb_client = boto3.resource('dynamodb',
 
 #전체 데이터에서 dynamoDB에서 적재할 데이터 형식으로 변경 
 def create_dynamodb_data(user_email, cal_list):
-
     new_data = {
-        'user_id': user_email,
-        "calendar":[
+        'user_id': user_email,  # 파티션 키는 문자열(S)
+        'calendar': [           # 리스트(L) 형식의 데이터
             {
-                'id': calendar["id"],
-                "summary": calendar["summary"],
-                "description": calendar["description"]
-
+                'id': calendar.get("id", ""),
+                'summary': calendar.get("summary", ""),
+                'description': calendar.get("description", "")
             }
-
-            for calendar in cal_list.get("items", [])
+            for calendar in cal_list.get("items", [])  # 빈 값도 안전하게 처리
         ]
     }
-    logger.info(f"Transformed data: {new_data}")
-    
+    logger.info(f"Transformed data for DynamoDB: {new_data}")
     return new_data
 
 async def get_google_email(access_token):
@@ -90,15 +86,20 @@ async def put_calendar_list(access_token):
 
 #DB에 저장할 Item을 파라미터로 입력 받기 
 def push_to_dynamodb_calendar_list(dynamodb_item):
-        serializer = TypeSerializer()
-        serialized_item = {key: serializer.serialize(value) for key, value in dynamodb_item.items()}
-        logger.info("DynamoDB에 넣을 직렬화된 데이터:")
-        logger.info(serialized_item)
+    table = dynamodb_client.Table("lookback-calendar-list")  # 테이블 객체 가져오기
 
-        table = dynamodb_client.Table("lookback-calendar-list")
-        table.put_item(Item=serialized_item)
+    # DynamoDB에 삽입할 데이터
+    item = {
+        "user_id": dynamodb_item["user_id"],  # 문자열 타입
+        "calendar": dynamodb_item["calendar"]  # 리스트 타입
+    }
+
+    try:
+        table.put_item(Item=item)
         logger.info("Successfully inserted item into DynamoDB")
-        
+    except Exception as e:
+        logger.error(f"Error inserting item into DynamoDB: {str(e)}")
+
 def push_to_dynamodb_calendar_event(dynamodb_item):
     dynamodb_client.put_item(
             TableName="lookback-db", 
