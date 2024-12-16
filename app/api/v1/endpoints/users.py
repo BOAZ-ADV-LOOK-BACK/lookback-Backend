@@ -1,6 +1,7 @@
 # users.py
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from app.api.deps import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
@@ -87,7 +88,20 @@ async def update_profile(
             detail="프로필 업데이트 중 오류가 발생했습니다."
         )
 
-# 기존 API 엔드포인트들은 유지
+@router.get("/me")
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """JWT 토큰으로 현재 로그인한 사용자의 정보를 반환합니다."""
+    return {
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "birth": current_user.birth,
+        "gender": current_user.gender,
+        "job": current_user.job,
+        "hobby": current_user.hobby,
+        "interest": current_user.interest if hasattr(current_user, 'interest') else None,
+        "is_new_user": current_user.is_new_user
+    }
+
 @router.get("/get-user-email")
 async def get_user_email(email: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == email))
