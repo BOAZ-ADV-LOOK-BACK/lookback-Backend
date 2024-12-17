@@ -61,28 +61,30 @@ async def get_calendar_data(token_info):
 
 
 async def get_calendar_events(access_token, calendar_ids):
-   logger.info(f"받은 캘린더 ID 목록: {calendar_ids}")  # 캘린더 ID 로깅
-   events_all = []
-   
-   async with httpx.AsyncClient() as client:
-       for calendar_id in calendar_ids:
-           logger.info(f"처리 중인 캘린더 ID: {calendar_id}")  # 개별 ID 로깅
-           url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
-           headers = {"Authorization": f"Bearer {access_token}"}
-           
-           try:
-               response = await client.get(url, headers=headers)
-               if response.status_code == 200:
-                   events = response.json()
-                   events_all.append({
-                       'calendar_id': calendar_id,
-                       'events': events.get('items', [])
-                   })
-               else:
-                   logger.error(f"캘린더 {calendar_id}의 이벤트 가져오기 실패: {response.status_code}")
-                   logger.error(f"응답 내용: {await response.text()}")  # 에러 응답 내용 로깅
-           except Exception as e:
-               logger.error(f"캘린더 {calendar_id} 처리 중 오류 발생: {str(e)}")
-               continue
-   
-   return events_all
+    if isinstance(calendar_ids, str):  # calendar_ids가 문자열로 전달된 경우
+        calendar_ids = [calendar_ids]  # 리스트로 변환
+    
+    logger.info(f"받은 캘린더 ID 목록: {calendar_ids}")
+    events_all = []
+    
+    async with httpx.AsyncClient() as client:
+        for calendar_id in calendar_ids:
+            logger.info(f"처리 중인 캘린더 ID: {calendar_id}")
+            url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            try:
+                response = await client.get(url, headers=headers)
+                if response.status_code == 200:
+                    events = response.json()
+                    events_all.append({
+                        'calendar_id': calendar_id,
+                        'events': events.get('items', [])
+                    })
+                else:
+                    logger.error(f"캘린더 {calendar_id}의 이벤트 가져오기 실패: {response.status_code}")
+            except Exception as e:
+                logger.error(f"캘린더 {calendar_id} 처리 중 오류 발생: {str(e)}")
+                continue
+    
+    return events_all
