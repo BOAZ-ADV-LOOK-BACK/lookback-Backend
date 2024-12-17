@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, logger
 from pydantic import BaseModel
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import put_calendar_list
+from app.db.dynamo import put_calendar_list, store_calendar_events
 from app.models.user import User
 import httpx
 import json
@@ -115,6 +115,34 @@ async def sync_calendar(current_user: User = Depends(get_current_user)):
            detail=f"캘린더 동기화 실패: {str(e)}"
        )
 
+@router.post("/sync-events")
+async def sync_events(current_user: User = Depends(get_current_user)):
+    calendar_logger.info("이벤트 동기화 시작")
+    try:
+        calendar_logger.info(f"사용자 {current_user.email}의 이벤트 동기화 요청")
+        
+        # refresh token으로 새 access token 획득
+        calendar_logger.info("새로운 액세스 토큰 요청")
+        new_access_token = await refresh_google_token(current_user.refresh_token)
+        calendar_logger.info("새로운 액세스 토큰 발급 완료")
+        
+        # 이벤트 동기화 (기존에 만든 함수 사용)
+        calendar_logger.info("DynamoDB에 이벤트 데이터 동기화 시작")
+        await store_calendar_events(current_user.email, new_access_token)
+        calendar_logger.info("이벤트 데이터 동기화 완료")
+        
+        return {
+            "success": True,
+            "message": "이벤트 동기화가 성공적으로 완료되었습니다"
+        }
+    except Exception as e:
+        calendar_logger.error(f"이벤트 동기화 중 오류 발생: {str(e)}")
+        calendar_logger.error(f"상세 에러 정보: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"이벤트 동기화 실패: {str(e)}"
+        )
+    
 ### 캘린더 API
 # 1. 캘린더 데이터 요청
 # 2. 전처리
