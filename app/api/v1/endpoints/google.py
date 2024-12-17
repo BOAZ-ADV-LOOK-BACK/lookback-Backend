@@ -60,18 +60,26 @@ async def get_calendar_data(token_info):
 
 
 
-@router.get("/events")
-async def get_events_data(token_info, cal_id):
-    # calendar events 데이터 요청
-    client = httpx.AsyncClient()
-    try:    
-        response = await client.get(
-            f"https://www.googleapis.com/calendar/v3/calendars/{cal_id}",
-            headers={"Authorization": f"Bearer {token_info['access_token']}"}
-        )
-        response.raise_for_status()
-        events_info = response.json()
-    finally:
-        await client.aclose()  # 명시적으로 닫기
-
-    return events_info
+async def get_calendar_events(access_token, calendar_ids):
+    events_all = []
+    
+    async with httpx.AsyncClient() as client:
+        for calendar_id in calendar_ids:
+            url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
+            headers = {"Authorization": f"Bearer {access_token}"}
+            
+            try:
+                response = await client.get(url, headers=headers)
+                if response.status_code == 200:
+                    events = response.json()
+                    events_all.append({
+                        'calendar_id': calendar_id,
+                        'events': events.get('items', [])
+                    })
+                else:
+                    logger.error(f"Failed to get events for calendar {calendar_id}: {response.status_code}")
+            except Exception as e:
+                logger.error(f"Error getting events for calendar {calendar_id}: {str(e)}")
+                continue
+    
+    return events_all

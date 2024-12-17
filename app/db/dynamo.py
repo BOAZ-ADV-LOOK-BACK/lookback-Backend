@@ -50,9 +50,6 @@ async def get_google_email(access_token):
             return None
 #google_login에서 호출 시 access_token, user_email 가져오기 
 async def put_calendar_list(access_token):
-
-    #dynamoDB에 넣을 수 있는 객체로 변환하기 위한 typeSerializer 객체 생성 
-    serializer = TypeSerializer()
     
     token_info = {"access_token": access_token}
 
@@ -74,15 +71,58 @@ async def put_calendar_list(access_token):
         logger.error(f"Unexpected error: {str(e)}")
         logger.error(f"상세 에러: {traceback.format_exc()}")
 
-#def put_calendar_events():
+# DynamoDB에서 캘린더 리스트 가져오기
+async def get_calendar_list_by_user(user_email):
+    """유저의 캘린더 리스트를 DynamoDB에서 가져오기"""
+    table = dynamodb_client.Table("lookback-calendar-list")
+    
+    try:
+        response = table.get_item(
+            Key={
+                'user_id': user_email
+            }
+        )
+        return response.get('Item', {}).get('calendar', [])
+    except Exception as e:
+        logger.error(f"Error getting calendar list from DynamoDB: {str(e)}")
+        return []
 
-    #토큰 받아오기
 
-    #캘린더 리스트 받아오기
-    #cal_list = google.get_calendar_data(access_toekn)
-
-    #캘린더 id로 순회하면서 데이터 가져오기 -> 전처리 후 DB
-    #for event_list in cal_list["calendar"]["id"]:
+async def store_calendar_events(user_email, access_token):
+    """유저의 모든 캘린더의 이벤트를 가져와서 DynamoDB에 저장"""
+    # 1. 캘린더 리스트 가져오기
+    calendar_list = await get_calendar_list_by_user(user_email)
+    
+    # 2. 각 캘린더별로 이벤트 가져오기
+    for calendar in calendar_list:
+        calendar_id = calendar['id']
+        try:
+            # Google Calendar API로 이벤트 가져오기
+            events = await google.get_calendar_events(access_token, calendar_id)
+            
+            # DynamoDB에 저장할 형태로 데이터 변환
+            events_data = {
+                'user_id': user_email,
+                'calendar_id': calendar_id,
+                'events': [
+                    {
+                        'event_id': event.get('id'),
+                        'summary': event.get('summary'),
+                        'description': event.get('description'),
+                        'start': event.get('start'),
+                        'end': event.get('end'),
+                        # 필요한 다른 이벤트 정보들 추가
+                    }
+                    for event in events.get('items', [])
+                ]
+            }
+            
+            # DynamoDB에 저장
+            await push_to_dynamodb_events(events_data)
+            
+        except Exception as e:
+            logger.error(f"Error processing calendar {calendar_id}: {str(e)}")
+            continue
 
 #DB에 저장할 Item을 파라미터로 입력 받기 
 def push_to_dynamodb_calendar_list(dynamodb_item):
@@ -105,3 +145,13 @@ def push_to_dynamodb_calendar_event(dynamodb_item):
             TableName="lookback-db", 
             Item=dynamodb_item
         )
+    
+async def push_to_dynamodb_events(events_data):
+    """이벤트 데이터를 DynamoDB에 저장"""
+    table = dynamodb_client.Table("lookback-calendar-events")  # 새로운 테이블 사용
+    
+    try:
+        table.put_item(Item=events_data)
+        logger.info(f"Successfully stored events for calendar {events_data['calendar_id']}")
+    except Exception as e:
+        logger.error(f"Error storing events in DynamoDB: {str(e)}")
