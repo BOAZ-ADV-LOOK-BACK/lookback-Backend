@@ -89,43 +89,28 @@ async def get_calendar_list_by_user(user_email):
 
 
 async def store_calendar_events(user_email, access_token):
-    """유저의 모든 캘린더의 이벤트를 가져와서 DynamoDB에 저장"""
-    # 1. 캘린더 리스트 가져오기
     calendar_list = await get_calendar_list_by_user(user_email)
-    logger.info(f"가져온 캘린더 리스트: {calendar_list}")  # 캘린더리스트 로깅
     
-    calendar_ids = [calendar['id'] for calendar in calendar_list]
-    logger.info(f"추출된 캘린더 ID 목록: {calendar_ids}") 
-    
-    # 2. 각 캘린더별로 이벤트 가져오기
     for calendar in calendar_list:
-        calendar_id = calendar['id']
         try:
-            # Google Calendar API로 이벤트 가져오기
-            events = await google.get_calendar_events(access_token, calendar_id)
+            calendar_id = calendar['id']
+            logger.info(f"캘린더 {calendar_id} 이벤트 처리 시작")
             
-            # DynamoDB에 저장할 형태로 데이터 변환
-            events_data = {
-                'user_id': user_email,
-                'calendar_id': calendar_id,
-                'events': [
-                    {
-                        'event_id': event.get('id'),
-                        'summary': event.get('summary'),
-                        'description': event.get('description'),
-                        'start': event.get('start'),
-                        'end': event.get('end'),
-                        # 필요한 다른 이벤트 정보들 추가
-                    }
-                    for event in events.get('items', [])
-                ]
-            }
-            
-            # DynamoDB에 저장
-            await push_to_dynamodb_events(events_data)
-            
+            events = await get_calendar_events(access_token, [calendar_id])
+            if events and events[0]['events']:  # events가 있고 첫 번째 캘린더의 이벤트가 있는 경우
+                events_data = {
+                    'user_id': user_email,
+                    'calendar_id': calendar_id,
+                    'events': events[0]['events']  # 직접 events 리스트 접근
+                }
+                
+                await push_to_dynamodb_events(events_data)
+                logger.info(f"캘린더 {calendar_id} 이벤트 저장 완료")
+            else:
+                logger.info(f"캘린더 {calendar_id}에 저장할 이벤트가 없습니다")
+                
         except Exception as e:
-            logger.error(f"Error processing calendar {calendar_id}: {str(e)}")
+            logger.error(f"캘린더 {calendar_id} 처리 중 오류 발생: {str(e)}")
             continue
 
 #DB에 저장할 Item을 파라미터로 입력 받기 
