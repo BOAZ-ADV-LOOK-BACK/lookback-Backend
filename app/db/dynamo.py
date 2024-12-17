@@ -92,6 +92,10 @@ async def store_calendar_events(user_email, access_token):
     """유저의 모든 캘린더의 이벤트를 가져와서 DynamoDB에 저장"""
     # 1. 캘린더 리스트 가져오기
     calendar_list = await get_calendar_list_by_user(user_email)
+    logger.info(f"가져온 캘린더 리스트: {calendar_list}")  # 캘린더리스트 로깅
+    
+    calendar_ids = [calendar['id'] for calendar in calendar_list]
+    logger.info(f"추출된 캘린더 ID 목록: {calendar_ids}") 
     
     # 2. 각 캘린더별로 이벤트 가져오기
     for calendar in calendar_list:
