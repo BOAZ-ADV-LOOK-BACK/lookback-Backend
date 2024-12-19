@@ -139,7 +139,7 @@ async def sync_events(current_user: User = Depends(get_current_user)):
         calendar_logger.error(f"이벤트 동기화 중 오류 발생: {str(e)}")
         calendar_logger.error(f"상세 에러 정보: {traceback.format_exc()}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"이벤트 동기화 실패: {str(e)}"
         )
     
