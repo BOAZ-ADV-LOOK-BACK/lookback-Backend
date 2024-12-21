@@ -178,52 +178,56 @@ async def push_to_dynamodb_events(events_data: dict):
 
 from datetime import datetime, timedelta
 
-async def get_weekly_activity_data(user_email: str) -> list:
-    """
-    사용자의 이번 주와 지난 주의 활동 데이터를 DynamoDB에서 조회합니다.
-    
-    Args:
-        user_email (str): 사용자 이메일
-        
-    Returns:
-        list: 사용자의 2주간의 캘린더 이벤트 데이터
-    """
+async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
-        # 현재 날짜 기준으로 이번 주와 지난 주의 시작/종료 날짜 계산
-        today = datetime.now()
-        this_week_start = today - timedelta(days=today.weekday())
-        last_week_start = this_week_start - timedelta(days=7)
+        # 날짜 계산 로깅
+        today = datetime.now(pytz.UTC)
+        logger.info(f"Current UTC time: {today}")
         
-        # 시작 시간을 UTC로 변환 (DynamoDB에 저장된 형식과 맞추기)
+        this_week_start = today - timedelta(days=today.weekday())
+        logger.info(f"This week start (before time reset): {this_week_start}")
+        
+        last_week_start = this_week_start - timedelta(days=7)
+        logger.info(f"Last week start (before time reset): {last_week_start}")
+        
+        # 시간 초기화 로깅
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         last_week_start = last_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Search period: from {last_week_start} to {this_week_start + timedelta(days=7)}")
         
-        logger.info(f"Fetching events from {last_week_start} to {this_week_start + timedelta(days=7)}")
-        
-        # 해당 사용자의 모든 캘린더에 대한 이벤트 조회
+        # DynamoDB 쿼리 로깅
         response = table.query(
             KeyConditionExpression='user_id = :uid',
             ExpressionAttributeValues={':uid': user_email}
         )
+        logger.info(f"DynamoDB response items count: {len(response.get('Items', []))}")
         
         events = []
+        filtered_count = 0
         for item in response.get('Items', []):
+            logger.info(f"Processing calendar: {item.get('calendar_id', 'unknown')}")
             for event in item.get('events', []):
                 start_time = event.get('start', {}).get('dateTime')
                 if start_time:
-                    event_date = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-                    # 지난 주와 이번 주의 이벤트만 필터링
+                    event_date = datetime.fromisoformat(start_time.replace('Z', '+00:00')).replace(tzinfo=pytz.UTC)
+                    logger.info(f"Event date: {event_date}, Start time: {start_time}")
                     if last_week_start <= event_date < this_week_start + timedelta(days=7):
                         events.append(event)
+                        filtered_count += 1
+                        logger.info(f"Event added - summary: {event.get('summary', 'No summary')}")
         
-        logger.info(f"Retrieved {len(events)} events for user {user_email}")
-        return {
+        logger.info(f"Total events before filtering: {len(response.get('Items', []))}")
+        logger.info(f"Events within date range: {filtered_count}")
+        
+        result = {
             'events': events,
             'this_week_start': this_week_start.isoformat(),
             'last_week_start': last_week_start.isoformat()
         }
+        logger.info(f"Returning data structure: {result.keys()}")
+        return result
         
     except Exception as e:
         logger.error(f"Error retrieving weekly activity data from DynamoDB: {str(e)}")
