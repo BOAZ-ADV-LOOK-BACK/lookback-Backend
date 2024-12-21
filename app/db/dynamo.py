@@ -1,5 +1,7 @@
 # dynamo.py
 import traceback
+
+import pytz
 from app.api.v1.endpoints import google, login
 from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer
@@ -182,53 +184,43 @@ async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
-        # 날짜 계산 로깅
         today = datetime.now(pytz.UTC)
-        logger.info(f"Current UTC time: {today}")
+        logger.info(f"현재 UTC 시간: {today}")
         
         this_week_start = today - timedelta(days=today.weekday())
-        logger.info(f"This week start (before time reset): {this_week_start}")
-        
         last_week_start = this_week_start - timedelta(days=7)
-        logger.info(f"Last week start (before time reset): {last_week_start}")
         
-        # 시간 초기화 로깅
+        # 시간 초기화 및 UTC 적용
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         last_week_start = last_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        logger.info(f"Search period: from {last_week_start} to {this_week_start + timedelta(days=7)}")
         
-        # DynamoDB 쿼리 로깅
+        logger.info(f"조회 기간 - 시작: {last_week_start}, 종료: {this_week_start + timedelta(days=7)}")
+        
         response = table.query(
             KeyConditionExpression='user_id = :uid',
             ExpressionAttributeValues={':uid': user_email}
         )
-        logger.info(f"DynamoDB response items count: {len(response.get('Items', []))}")
+        logger.info(f"DynamoDB 원본 응답: {response}")
         
         events = []
-        filtered_count = 0
         for item in response.get('Items', []):
-            logger.info(f"Processing calendar: {item.get('calendar_id', 'unknown')}")
-            for event in item.get('events', []):
-                start_time = event.get('start', {}).get('dateTime')
-                if start_time:
-                    event_date = datetime.fromisoformat(start_time.replace('Z', '+00:00')).replace(tzinfo=pytz.UTC)
-                    logger.info(f"Event date: {event_date}, Start time: {start_time}")
-                    if last_week_start <= event_date < this_week_start + timedelta(days=7):
-                        events.append(event)
-                        filtered_count += 1
-                        logger.info(f"Event added - summary: {event.get('summary', 'No summary')}")
-        
-        logger.info(f"Total events before filtering: {len(response.get('Items', []))}")
-        logger.info(f"Events within date range: {filtered_count}")
+            logger.info(f"항목 처리 중: {item}")
+            events.extend(item.get('events', []))
         
         result = {
             'events': events,
-            'this_week_start': this_week_start.isoformat(),
-            'last_week_start': last_week_start.isoformat()
+            'this_week_start': this_week_start.strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'last_week_start': last_week_start.strftime('%Y-%m-%dT%H:%M:%S%z')
         }
-        logger.info(f"Returning data structure: {result.keys()}")
+        
+        logger.info(f"최종 결과 구조: {result}")
         return result
         
     except Exception as e:
-        logger.error(f"Error retrieving weekly activity data from DynamoDB: {str(e)}")
-        return {'events': [], 'this_week_start': None, 'last_week_start': None}
+        logger.error(f"DynamoDB에서 데이터 조회 중 오류 발생: {str(e)}")
+        logger.error(f"전체 오류 내용: {traceback.format_exc()}")
+        return {
+            'events': [],
+            'this_week_start': datetime.now(pytz.UTC).strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'last_week_start': (datetime.now(pytz.UTC) - timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S%z')
+        }
