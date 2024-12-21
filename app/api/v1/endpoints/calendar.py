@@ -177,69 +177,76 @@ async def get_dashboard_data(code):
 #### 켈린더 데이터 전처리 함수
 async def process_weekly_activity_data(data: dict) -> dict:
     calendar_logger.info("주간 이벤트 데이터 전처리 시작")
-    calendar_logger.info(f"Received data keys: {data.keys()}")
-    
-    events = data['events']
-    calendar_logger.info(f"Total events to process: {len(events)}")
-    
-    this_week_start = datetime.fromisoformat(data['this_week_start'])
-    last_week_start = datetime.fromisoformat(data['last_week_start'])
-    calendar_logger.info(f"Week starts - This week: {this_week_start}, Last week: {last_week_start}")
-    
-    this_week_events = []
-    last_week_events = []
+    calendar_logger.info(f"받은 데이터: {data}")
     
     try:
+        events = data.get('events', [])
+        calendar_logger.info(f"총 이벤트 수: {len(events)}")
+        
+        try:
+            this_week_start = datetime.strptime(data['this_week_start'], '%Y-%m-%dT%H:%M:%S%z')
+            last_week_start = datetime.strptime(data['last_week_start'], '%Y-%m-%dT%H:%M:%S%z')
+            calendar_logger.info(f"날짜 파싱 결과 - 이번 주: {this_week_start}, 지난 주: {last_week_start}")
+        except ValueError as e:
+            calendar_logger.error(f"날짜 파싱 오류: {e}")
+            raise
+        
+        this_week_events = []
+        last_week_events = []
+        
+        kst = pytz.timezone('Asia/Seoul')
+        
         for event in events:
-            if 'start' in event and 'end' in event:
+            try:
+                if 'start' not in event or 'end' not in event:
+                    calendar_logger.warning(f"시작/종료 시간이 없는 이벤트 건너뜀: {event}")
+                    continue
+                
                 start = event['start'].get('dateTime')
                 end = event['end'].get('dateTime')
                 
-                if start and end:
-                    calendar_logger.info(f"Processing event: {event.get('summary', 'No summary')}")
-                    calendar_logger.info(f"Original times - Start: {start}, End: {end}")
-                    
-                    # 시간 변환 과정 로깅
-                    start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
-                    end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
-                    calendar_logger.info(f"After fromisoformat - Start: {start_dt}, End: {end_dt}")
-                    
-                    # 시간대 변환 로깅
-                    kst = pytz.timezone('Asia/Seoul')
-                    start_dt = start_dt.astimezone(kst)
-                    end_dt = end_dt.astimezone(kst)
-                    calendar_logger.info(f"After timezone conversion (KST) - Start: {start_dt}, End: {end_dt}")
-                    
-                    # 시간 계산 로깅
-                    start_time = start_dt.hour + start_dt.minute / 60
-                    end_time = end_dt.hour + end_dt.minute / 60
-                    calendar_logger.info(f"Converted to hours - Start: {start_time}, End: {end_time}")
-                    
-                    event_data = {
-                        'day': start_dt.weekday(),
-                        'startTime': round(start_time, 2),
-                        'endTime': round(end_time, 2),
-                        'duration': round(end_time - start_time, 2)
-                    }
-                    calendar_logger.info(f"Created event data: {event_data}")
-                    
-                    if this_week_start <= start_dt < this_week_start + timedelta(days=7):
-                        this_week_events.append(event_data)
-                        calendar_logger.info("Added to this week's events")
-                    elif last_week_start <= start_dt < last_week_start + timedelta(days=7):
-                        last_week_events.append(event_data)
-                        calendar_logger.info("Added to last week's events")
+                if not start or not end:
+                    calendar_logger.warning(f"유효하지 않은 시간을 가진 이벤트 건너뜀: {event}")
+                    continue
+                
+                calendar_logger.info(f"이벤트 처리 중: {event.get('summary', '제목 없음')}")
+                calendar_logger.info(f"원본 시간 - 시작: {start}, 종료: {end}")
+                
+                # 시간 변환 및 KST 적용
+                start_dt = datetime.fromisoformat(start.replace('Z', '+00:00')).astimezone(kst)
+                end_dt = datetime.fromisoformat(end.replace('Z', '+00:00')).astimezone(kst)
+                
+                event_data = {
+                    'day': start_dt.weekday(),
+                    'startTime': round(start_dt.hour + start_dt.minute / 60, 2),
+                    'endTime': round(end_dt.hour + end_dt.minute / 60, 2),
+                    'duration': round((end_dt - start_dt).total_seconds() / 3600, 2)
+                }
+                calendar_logger.info(f"처리된 이벤트 데이터: {event_data}")
+                
+                event_start_date = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                if this_week_start <= event_start_date < this_week_start + timedelta(days=7):
+                    this_week_events.append(event_data)
+                    calendar_logger.info("이번 주 이벤트로 추가됨")
+                elif last_week_start <= event_start_date < last_week_start + timedelta(days=7):
+                    last_week_events.append(event_data)
+                    calendar_logger.info("지난 주 이벤트로 추가됨")
+                
+            except Exception as e:
+                calendar_logger.error(f"이벤트 처리 중 오류 발생: {e}")
+                continue
         
-        calendar_logger.info(f"Processing complete - This week: {len(this_week_events)} events, Last week: {len(last_week_events)} events")
-        
-        return {
+        result = {
             'this_week': this_week_events,
             'last_week': last_week_events
         }
+        calendar_logger.info(f"최종 처리 결과: {result}")
+        return result
         
     except Exception as e:
         calendar_logger.error(f"데이터 전처리 중 오류 발생: {str(e)}")
-        calendar_logger.error(f"상세 에러: {traceback.format_exc()}")
+        calendar_logger.error(f"상세 오류 내용: {traceback.format_exc()}")
         return {'this_week': [], 'last_week': []}
 
 @router.get("/weekly-activity")
