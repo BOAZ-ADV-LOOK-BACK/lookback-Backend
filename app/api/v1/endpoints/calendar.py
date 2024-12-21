@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import get_weekly_activity_data, put_calendar_list, store_calendar_events
+from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events
 from app.models.user import User
 import httpx
 import json
@@ -242,10 +242,12 @@ async def process_weekly_activity_data(data: dict) -> dict:
 async def get_weekly_activity(current_user: User = Depends(get_current_user)):
     calendar_logger.info(f"사용자 {current_user.email}의 주간 활동 데이터 요청")
     try:
-        # DynamoDB에서 이벤트 데이터 조회
-        raw_data = await get_weekly_activity_data(current_user.email)
+        # 데이터 확인
+        calendar_logger.info("=== 현재 저장된 데이터 확인 ===")
+        await check_calendar_events(current_user.email)
         
-        # 데이터 전처리
+        # 기존 로직 실행
+        raw_data = await get_weekly_activity_data(current_user.email)
         processed_data = await process_weekly_activity_data(raw_data)
         
         return {
