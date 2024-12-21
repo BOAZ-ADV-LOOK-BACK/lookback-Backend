@@ -184,43 +184,76 @@ async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
+        # 이번 주의 시작/종료 날짜 계산
         today = datetime.now(pytz.UTC)
-        logger.info(f"현재 UTC 시간: {today}")
+        this_week_start = today - timedelta(days=today.weekday())  # 이번 주 월요일
+        this_week_end = this_week_start + timedelta(days=5)        # 이번 주 금요일
         
-        this_week_start = today - timedelta(days=today.weekday())
-        last_week_start = this_week_start - timedelta(days=7)
-        
-        # 시간 초기화 및 UTC 적용
+        # 시간 설정
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        last_week_start = last_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
+
+        logger.info(f"조회 기간 - 시작: {this_week_start}, 종료: {this_week_end}")
         
-        logger.info(f"조회 기간 - 시작: {last_week_start}, 종료: {this_week_start + timedelta(days=7)}")
+        # 이번 주 데이터만 조회
+        response = table.query(
+            KeyConditionExpression='user_id = :uid',
+            FilterExpression='start.dateTime between :start_date and :end_date',
+            ExpressionAttributeValues={
+                ':uid': user_email,
+                ':start_date': this_week_start.isoformat(),
+                ':end_date': this_week_end.isoformat()
+            }
+        )
         
+        logger.info(f"조회된 이번 주 이벤트 수: {len(response.get('Items', []))}")
+        
+        events = response.get('Items', [])
+        for event in events[:3]:  # 처음 3개 이벤트만 로깅
+            logger.info(f"이벤트 샘플 - 제목: {event.get('summary', 'No title')}")
+            logger.info(f"시작시간: {event.get('start', {}).get('dateTime')}")
+            logger.info(f"종료시간: {event.get('end', {}).get('dateTime')}")
+        
+        return {
+            'events': events,
+            'this_week_start': this_week_start.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"DynamoDB에서 데이터 조회 중 오류 발생: {str(e)}")
+        logger.error(f"상세 오류: {traceback.format_exc()}")
+        return {'events': [], 'this_week_start': None}
+
+async def check_calendar_events(user_email: str):
+    """
+    사용자의 캘린더 이벤트 데이터를 확인하는 함수
+    """
+    table = dynamodb_client.Table("lookback-calendar-events")
+    
+    try:
         response = table.query(
             KeyConditionExpression='user_id = :uid',
             ExpressionAttributeValues={':uid': user_email}
         )
-        logger.info(f"DynamoDB 원본 응답: {response}")
         
-        events = []
+        logger.info("=== 캘린더 이벤트 데이터 확인 ===")
+        logger.info(f"총 아이템 수: {len(response.get('Items', []))}")
+        
         for item in response.get('Items', []):
-            logger.info(f"항목 처리 중: {item}")
-            events.extend(item.get('events', []))
-        
-        result = {
-            'events': events,
-            'this_week_start': this_week_start.strftime('%Y-%m-%dT%H:%M:%S%z'),
-            'last_week_start': last_week_start.strftime('%Y-%m-%dT%H:%M:%S%z')
-        }
-        
-        logger.info(f"최종 결과 구조: {result}")
-        return result
+            logger.info(f"\n캘린더 ID: {item.get('calendar_id')}")
+            events = item.get('events', [])
+            logger.info(f"이벤트 수: {len(events)}")
+            
+            # 처음 5개 이벤트만 샘플로 출력
+            for event in events[:5]:
+                logger.info(f"""
+                제목: {event.get('summary')}
+                시작: {event.get('start', {}).get('dateTime')}
+                종료: {event.get('end', {}).get('dateTime')}
+                """)
+                
+        return response.get('Items', [])
         
     except Exception as e:
-        logger.error(f"DynamoDB에서 데이터 조회 중 오류 발생: {str(e)}")
-        logger.error(f"전체 오류 내용: {traceback.format_exc()}")
-        return {
-            'events': [],
-            'this_week_start': datetime.now(pytz.UTC).strftime('%Y-%m-%dT%H:%M:%S%z'),
-            'last_week_start': (datetime.now(pytz.UTC) - timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S%z')
-        }
+        logger.error(f"데이터 확인 중 오류 발생: {str(e)}")
+        return []
