@@ -1,10 +1,12 @@
 # 캘린더 관련 API 모음
 # calender.py
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, logger
 from pydantic import BaseModel
+import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import put_calendar_list, store_calendar_events
+from app.db.dynamo import get_weekly_activity_data, put_calendar_list, store_calendar_events
 from app.models.user import User
 import httpx
 import json
@@ -167,3 +169,95 @@ async def get_dashboard_data(code):
     # 4. 프론트로 리턴
     # 2번에서 전처리 한 결과 리턴해주면 됨
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
+
+
+
+
+
+#### 켈린더 데이터 전처리 함수
+async def process_weekly_activity_data(data: dict) -> dict:
+    """
+    캘린더 이벤트 데이터를 주 단위 활동 시간 시각화에 맞게 전처리합니다.
+    
+    Args:
+        data (dict): DynamoDB에서 조회한 이벤트 데이터와 주 시작 날짜
+        
+    Returns:
+        dict: 전처리된 이벤트 데이터
+    """
+    calendar_logger.info("주간 이벤트 데이터 전처리 시작")
+    
+    events = data['events']
+    this_week_start = datetime.fromisoformat(data['this_week_start'])
+    last_week_start = datetime.fromisoformat(data['last_week_start'])
+    
+    this_week_events = []
+    last_week_events = []
+    
+    try:
+        for event in events:
+            if 'start' in event and 'end' in event:
+                start = event['start'].get('dateTime')
+                end = event['end'].get('dateTime')
+                
+                if start and end:
+                    # ISO 형식의 시간을 datetime 객체로 변환
+                    start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                    end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
+                    
+                    # UTC to KST 변환
+                    kst = pytz.timezone('Asia/Seoul')
+                    start_dt = start_dt.astimezone(kst)
+                    end_dt = end_dt.astimezone(kst)
+                    
+                    # 시작 시간과 종료 시간을 시간 단위로 변환
+                    start_time = start_dt.hour + start_dt.minute / 60
+                    end_time = end_dt.hour + end_dt.minute / 60
+                    
+                    # 주차별로 이벤트 분류
+                    event_data = {
+                        'day': start_dt.weekday(), # 0(월요일) ~ 6(일요일)
+                        'startTime': round(start_time, 2),
+                        'endTime': round(end_time, 2),
+                        'duration': round(end_time - start_time, 2)
+                    }
+                    
+                    if this_week_start <= start_dt < this_week_start + timedelta(days=7):
+                        this_week_events.append(event_data)
+                    elif last_week_start <= start_dt < last_week_start + timedelta(days=7):
+                        last_week_events.append(event_data)
+        
+        calendar_logger.info(f"전처리 완료: 이번 주 {len(this_week_events)}개, 지난 주 {len(last_week_events)}개의 이벤트 처리됨")
+        
+        return {
+            'this_week': this_week_events,
+            'last_week': last_week_events
+        }
+        
+    except Exception as e:
+        calendar_logger.error(f"데이터 전처리 중 오류 발생: {str(e)}")
+        calendar_logger.error(f"상세 에러: {traceback.format_exc()}")
+        return {'this_week': [], 'last_week': []}
+
+@router.get("/weekly-activity")
+async def get_weekly_activity(current_user: User = Depends(get_current_user)):
+    calendar_logger.info(f"사용자 {current_user.email}의 주간 활동 데이터 요청")
+    try:
+        # DynamoDB에서 이벤트 데이터 조회
+        raw_data = await get_weekly_activity_data(current_user.email)
+        
+        # 데이터 전처리
+        processed_data = await process_weekly_activity_data(raw_data)
+        
+        return {
+            "success": True,
+            "data": processed_data
+        }
+        
+    except Exception as e:
+        calendar_logger.error(f"주간 활동 데이터 조회 중 오류 발생: {str(e)}")
+        calendar_logger.error(f"상세 에러: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail="주간 활동 데이터 조회 실패"
+        )
