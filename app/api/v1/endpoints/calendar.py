@@ -175,12 +175,19 @@ async def get_dashboard_data(code):
 
 
 #### 켈린더 데이터 전처리 함수
-async def process_weekly_activity_data(data: dict) -> dict:
+async def process_weekly_activity_data(data: dict, user_email: str) -> dict:  # user_email 파라미터 추가
     calendar_logger.info("주간 이벤트 데이터 전처리 시작")
     
     try:
         events = data.get('events', [])
         calendar_logger.info(f"총 이벤트 수: {len(events)}")
+        
+        # 현재 로그인한 사용자의 일정만 필터링
+        current_user_events = [
+            event for event in events 
+            if event.get('creator', {}).get('email') == user_email
+        ]
+        calendar_logger.info(f"현재 사용자의 이벤트 수: {len(current_user_events)}")
         
         # 요일별 시작/종료 시간을 저장할 딕셔너리
         daily_times = {
@@ -195,7 +202,7 @@ async def process_weekly_activity_data(data: dict) -> dict:
 
         kst = pytz.timezone('Asia/Seoul')
         
-        for event in events:
+        for event in current_user_events:
             try:
                 start = event['start'].get('dateTime')
                 end = event['end'].get('dateTime')
@@ -242,10 +249,8 @@ async def process_weekly_activity_data(data: dict) -> dict:
 async def get_weekly_activity(current_user: User = Depends(get_current_user)):
     calendar_logger.info(f"사용자 {current_user.email}의 주간 활동 데이터 요청")
     try:
-        # 기존 로직 실행
         raw_data = await get_weekly_activity_data(current_user.email)
-        calendar_logger.info(f"주간 활동 데이터: {raw_data}")  # logger를 calendar_logger로 변경
-        processed_data = await process_weekly_activity_data(raw_data)
+        processed_data = await process_weekly_activity_data(raw_data, current_user.email)
         calendar_logger.info(f"전처리된 주간 활동 데이터: {processed_data}")  # logger를 calendar_logger로 변경
         
         return {
