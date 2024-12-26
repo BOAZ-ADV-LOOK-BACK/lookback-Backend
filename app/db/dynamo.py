@@ -186,19 +186,21 @@ async def get_weekly_activity_data(user_email: str) -> dict:
     try:
         # 이번 주의 시작/종료 날짜 계산
         today = datetime.now(pytz.UTC)
-        this_week_start = today - timedelta(days=today.weekday())  # 이번 주 월요일
-        this_week_end = this_week_start + timedelta(days=5)        # 이번 주 금요일
+        this_week_start = today - timedelta(days=today.weekday())
+        this_week_end = this_week_start + timedelta(days=5)
         
-        # 시간 설정
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
 
         logger.info(f"조회 기간 - 시작: {this_week_start}, 종료: {this_week_end}")
         
-        # 이번 주 데이터만 조회
+        # 예약어 'start'를 피하기 위해 #st 별칭 사용
         response = table.query(
             KeyConditionExpression='user_id = :uid',
-            FilterExpression='start.dateTime between :start_date and :end_date',
+            FilterExpression='#st.dateTime between :start_date and :end_date',
+            ExpressionAttributeNames={
+                '#st': 'start'  # 예약어 'start'에 대한 별칭 정의
+            },
             ExpressionAttributeValues={
                 ':uid': user_email,
                 ':start_date': this_week_start.isoformat(),
@@ -208,14 +210,8 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         
         logger.info(f"조회된 이번 주 이벤트 수: {len(response.get('Items', []))}")
         
-        events = response.get('Items', [])
-        for event in events[:3]:  # 처음 3개 이벤트만 로깅
-            logger.info(f"이벤트 샘플 - 제목: {event.get('summary', 'No title')}")
-            logger.info(f"시작시간: {event.get('start', {}).get('dateTime')}")
-            logger.info(f"종료시간: {event.get('end', {}).get('dateTime')}")
-        
         return {
-            'events': events,
+            'events': response.get('Items', []),
             'this_week_start': this_week_start.isoformat()
         }
         
