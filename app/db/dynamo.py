@@ -114,35 +114,62 @@ async def get_calendar_list_by_user(user_email: str) -> list:
        return []
 
 async def store_calendar_events(user_email: str, access_token: str):
-   """
-   사용자의 모든 캘린더에 대한 이벤트를 조회하여 DynamoDB에 저장합니다.
+    """
+    사용자의 모든 캘린더에 대한 이벤트를 조회하여 DynamoDB에 저장합니다.
+    먼저 사용자의 기존 데이터를 삭제한 후 새로운 데이터를 저장합니다.
 
-   Args:
-       user_email (str): 사용자 이메일
-       access_token (str): Google OAuth2 액세스 토큰
-   """
-   calendar_list = await get_calendar_list_by_user(user_email)
-   
-   for calendar in calendar_list:
-       try:
-           calendar_id = calendar['id']
-           logger.info(f"캘린더 {calendar_id} 이벤트 처리 시작")
-           
-           events = await get_calendar_events(access_token, [calendar_id])
-           if events and events[0]['events']:
-               events_data = {
-                   'user_id': user_email,
-                   'calendar_id': calendar_id,
-                   'events': events[0]['events']
-               }
-               
-               await push_to_dynamodb_events(events_data)
-               logger.info(f"캘린더 {calendar_id} 이벤트 저장 완료")
-           else:
-               logger.info(f"캘린더 {calendar_id}에 저장할 이벤트가 없습니다")
-       except Exception as e:
-           logger.error(f"캘린더 {calendar_id} 처리 중 오류 발생: {str(e)}")
-           continue
+    Args:
+        user_email (str): 사용자 이메일
+        access_token (str): Google OAuth2 액세스 토큰
+    """
+    table = dynamodb_client.Table("lookback-calendar-events")
+    
+    try:
+        # 1. 먼저 사용자의 기존 데이터를 모두 삭제
+        response = table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={
+                ':uid': user_email
+            }
+        )
+        
+        with table.batch_writer() as batch:
+            for item in response.get('Items', []):
+                batch.delete_item(
+                    Key={
+                        'user_id': item['user_id'],
+                        'calendar_id': item['calendar_id']
+                    }
+                )
+        logger.info(f"사용자 {user_email}의 기존 데이터 삭제 완료")
+        
+        # 2. 새로운 데이터 저장 프로세스
+        calendar_list = await get_calendar_list_by_user(user_email)
+        
+        for calendar in calendar_list:
+            try:
+                calendar_id = calendar['id']
+                logger.info(f"캘린더 {calendar_id} 이벤트 처리 시작")
+                
+                events = await get_calendar_events(access_token, [calendar_id])
+                if events and events[0]['events']:
+                    events_data = {
+                        'user_id': user_email,
+                        'calendar_id': calendar_id,
+                        'events': events[0]['events']
+                    }
+                    
+                    await push_to_dynamodb_events(events_data)
+                    logger.info(f"캘린더 {calendar_id} 이벤트 저장 완료")
+                else:
+                    logger.info(f"캘린더 {calendar_id}에 저장할 이벤트가 없습니다")
+            except Exception as e:
+                logger.error(f"캘린더 {calendar_id} 처리 중 오류 발생: {str(e)}")
+                continue
+                
+    except Exception as e:
+        logger.error(f"전체 프로세스 중 오류 발생: {str(e)}")
+        logger.error(f"상세 오류: {traceback.format_exc()}")
 
 def push_to_dynamodb_calendar_list(dynamodb_item: dict):
    """
@@ -164,51 +191,19 @@ def push_to_dynamodb_calendar_list(dynamodb_item: dict):
        logger.error(f"Error inserting item into DynamoDB: {str(e)}")
 
 async def push_to_dynamodb_events(events_data: dict):
-    """
-    캘린더 이벤트를 DynamoDB에 저장합니다.
-    사용자의 기존 데이터를 모두 삭제하고 새로운 데이터를 저장합니다.
-    
-    Args:
-        events_data (dict): 저장할 이벤트 데이터 (user_id, calendar_id, events 포함)
-    """
-    table = dynamodb_client.Table("lookback-calendar-events")
-    user_id = events_data['user_id']
-    
-    try:
-        # 1. 해당 사용자의 모든 기존 데이터 삭제
-        response = table.query(
-            KeyConditionExpression='user_id = :uid',
-            ExpressionAttributeValues={
-                ':uid': user_id
-            }
-        )
-        
-        # 기존 데이터 전체 삭제
-        with table.batch_writer() as batch:
-            for item in response.get('Items', []):
-                batch.delete_item(
-                    Key={
-                        'user_id': item['user_id'],
-                        'calendar_id': item['calendar_id']
-                    }
-                )
-        
-        logger.info(f"사용자 {user_id}의 기존 데이터 삭제 완료")
-        
-        # 2. 새로운 데이터 추가 - 캘린더별로 이벤트 저장
-        if events_data.get('events'):  # events가 있는 경우에만 저장
-            table.put_item(Item={
-                'user_id': user_id,
-                'calendar_id': events_data['calendar_id'],
-                'events': events_data['events']
-            })
-            logger.info(f"캘린더 {events_data['calendar_id']}의 이벤트 저장 완료")
-        else:
-            logger.info(f"캘린더 {events_data['calendar_id']}에 저장할 이벤트 없음")
-            
-    except Exception as e:
-        logger.error(f"DynamoDB 데이터 갱신 중 오류 발생: {str(e)}")
-        logger.error(f"상세 오류: {traceback.format_exc()}")
+   """
+   캘린더 이벤트를 DynamoDB에 저장합니다.
+
+   Args:
+       events_data (dict): 저장할 이벤트 데이터
+   """
+   table = dynamodb_client.Table("lookback-calendar-events")
+   
+   try:
+       table.put_item(Item=events_data)
+       logger.info(f"Successfully stored events for calendar {events_data['calendar_id']}")
+   except Exception as e:
+       logger.error(f"Error storing events in DynamoDB: {str(e)}")
 
 
 from datetime import datetime, timedelta
