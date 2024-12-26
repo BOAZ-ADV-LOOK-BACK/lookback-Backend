@@ -199,12 +199,22 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         response = table.scan()
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
+        logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
         
         # 3. 조회 기간에 해당하는 데이터만 필터링
-        filtered_events = [
-            event for event in raw_events 
-            if this_week_start <= datetime.fromisoformat(event['start']['dateTime']) <= this_week_end
-        ]
+        filtered_events = []
+        for event in raw_events:
+            try:
+                if 'events' in event:  # events 배열이 있는 경우
+                    for sub_event in event['events']:
+                        if 'start' in sub_event and 'dateTime' in sub_event['start']:
+                            event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+                            if this_week_start <= event_time <= this_week_end:
+                                filtered_events.append(sub_event)
+            except Exception as sub_e:
+                logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
+                continue
+                
         logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
         logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
         
@@ -215,6 +225,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         
     except Exception as e:
         logger.error(f"조회 중 오류: {str(e)}")
+        logger.error(f"전체 오류 내용: {traceback.format_exc()}")
         return {'events': [], 'this_week_start': None}
 
 async def check_calendar_events(user_email: str):
