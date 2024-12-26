@@ -244,11 +244,13 @@ async def get_weekly_activity(current_user: User = Depends(get_current_user)):
     try:
         # 데이터 확인
         calendar_logger.info("=== 현재 저장된 데이터 확인 ===")
-        await check_calendar_events(current_user.email)
+        # await check_calendar_events(current_user.email)
         
         # 기존 로직 실행
         raw_data = await get_weekly_activity_data(current_user.email)
+        logger.info(f"주간 활동 데이터: {raw_data}")
         processed_data = await process_weekly_activity_data(raw_data)
+        logger.info(f"전처리된 주간 활동 데이터: {processed_data}")
         
         return {
             "success": True,
