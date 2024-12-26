@@ -164,19 +164,42 @@ def push_to_dynamodb_calendar_list(dynamodb_item: dict):
        logger.error(f"Error inserting item into DynamoDB: {str(e)}")
 
 async def push_to_dynamodb_events(events_data: dict):
-   """
-   캘린더 이벤트를 DynamoDB에 저장합니다.
-
-   Args:
-       events_data (dict): 저장할 이벤트 데이터
-   """
-   table = dynamodb_client.Table("lookback-calendar-events")
-   
-   try:
-       table.put_item(Item=events_data)
-       logger.info(f"Successfully stored events for calendar {events_data['calendar_id']}")
-   except Exception as e:
-       logger.error(f"Error storing events in DynamoDB: {str(e)}")
+    """
+    캘린더 이벤트를 DynamoDB에 저장합니다.
+    기존 데이터를 완전히 삭제하고 새로운 데이터로 덮어씁니다.
+    
+    Args:
+        events_data (dict): 저장할 이벤트 데이터
+    """
+    table = dynamodb_client.Table("lookback-calendar-events")
+    
+    try:
+        # 1. 기존 데이터 삭제
+        response = table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={
+                ':uid': events_data['user_id']
+            }
+        )
+        
+        with table.batch_writer() as batch:
+            for item in response.get('Items', []):
+                batch.delete_item(
+                    Key={
+                        'user_id': item['user_id'],
+                        'calendar_id': item['calendar_id']
+                    }
+                )
+        
+        logger.info(f"기존 데이터 삭제 완료")
+        
+        # 2. 새로운 데이터 삽입
+        table.put_item(Item=events_data)
+        logger.info(f"새로운 데이터 저장 완료: calendar {events_data['calendar_id']}")
+        
+    except Exception as e:
+        logger.error(f"DynamoDB 데이터 갱신 중 오류 발생: {str(e)}")
+        logger.error(f"상세 오류: {traceback.format_exc()}")
 
 
 from datetime import datetime, timedelta
@@ -199,7 +222,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         response = table.scan()
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
-        logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
+        # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
         
         # 3. 조회 기간에 해당하는 데이터만 필터링
         filtered_events = []
