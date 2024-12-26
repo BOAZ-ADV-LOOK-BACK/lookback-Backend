@@ -1,4 +1,5 @@
 # dynamo.py
+import json
 import traceback
 
 import pytz
@@ -193,13 +194,23 @@ async def get_weekly_activity_data(user_email: str) -> dict:
 
         logger.info(f"조회 기간 - 시작: {this_week_start}, 종료: {this_week_end}")
         
-        # start와 dateTime 모두 예약어이므로 별칭 처리
+        # 먼저 전체 데이터를 조회해서 구조 확인
+        all_items = table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={
+                ':uid': user_email
+            }
+        )
+        
+        logger.info(f"전체 데이터 조회 결과: {json.dumps(all_items.get('Items', []), indent=2)}")
+        
+        # 그 다음 필터링된 쿼리 실행
         response = table.query(
             KeyConditionExpression='user_id = :uid',
             FilterExpression='#st.#dt between :start_date and :end_date',
             ExpressionAttributeNames={
-                '#st': 'start',  # start 예약어에 대한 별칭
-                '#dt': 'dateTime'  # dateTime 예약어에 대한 별칭
+                '#st': 'start',
+                '#dt': 'dateTime'
             },
             ExpressionAttributeValues={
                 ':uid': user_email,
@@ -208,7 +219,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
             }
         )
         
-        logger.info(f"조회된 이번 주 이벤트 수: {len(response.get('Items', []))}")
+        logger.info(f"필터링된 데이터 조회 결과: {json.dumps(response.get('Items', []), indent=2)}")
         
         return {
             'events': response.get('Items', []),
