@@ -1,7 +1,7 @@
 # 캘린더 관련 API 모음
 # calender.py
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, logger
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
@@ -242,15 +242,11 @@ async def process_weekly_activity_data(data: dict) -> dict:
 async def get_weekly_activity(current_user: User = Depends(get_current_user)):
     calendar_logger.info(f"사용자 {current_user.email}의 주간 활동 데이터 요청")
     try:
-        # 데이터 확인
-        calendar_logger.info("=== 현재 저장된 데이터 확인 ===")
-        # await check_calendar_events(current_user.email)
-        
         # 기존 로직 실행
         raw_data = await get_weekly_activity_data(current_user.email)
-        logger.info(f"주간 활동 데이터: {raw_data}")
+        calendar_logger.info(f"주간 활동 데이터: {raw_data}")  # logger를 calendar_logger로 변경
         processed_data = await process_weekly_activity_data(raw_data)
-        logger.info(f"전처리된 주간 활동 데이터: {processed_data}")
+        calendar_logger.info(f"전처리된 주간 활동 데이터: {processed_data}")  # logger를 calendar_logger로 변경
         
         return {
             "success": True,
