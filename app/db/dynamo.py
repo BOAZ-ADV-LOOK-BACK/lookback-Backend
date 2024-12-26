@@ -185,6 +185,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
+        # 1. 조회 기간 설정
         today = datetime.now(pytz.UTC)
         this_week_start = today - timedelta(days=today.weekday())
         this_week_end = this_week_start + timedelta(days=5)
@@ -192,43 +193,28 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
 
-        logger.info(f"조회 기간 - 시작: {this_week_start}, 종료: {this_week_end}")
+        logger.info(f"[조회 기간] {this_week_start.strftime('%Y-%m-%d %H:%M')} ~ {this_week_end.strftime('%Y-%m-%d %H:%M')}")
+
+        # 2. 데이터 조회
+        response = table.scan()
+        raw_events = response.get('Items', [])
+        logger.info(f"[전체 데이터 수] {len(raw_events)}개")
         
-        # 먼저 전체 데이터를 조회해서 구조 확인
-        all_items = table.query(
-            KeyConditionExpression='user_id = :uid',
-            ExpressionAttributeValues={
-                ':uid': user_email
-            }
-        )
-        
-        logger.info(f"전체 데이터 조회 결과: {json.dumps(all_items.get('Items', []), indent=2)}")
-        
-        # 그 다음 필터링된 쿼리 실행
-        response = table.query(
-            KeyConditionExpression='user_id = :uid',
-            FilterExpression='#st.#dt between :start_date and :end_date',
-            ExpressionAttributeNames={
-                '#st': 'start',
-                '#dt': 'dateTime'
-            },
-            ExpressionAttributeValues={
-                ':uid': user_email,
-                ':start_date': this_week_start.isoformat(),
-                ':end_date': this_week_end.isoformat()
-            }
-        )
-        
-        logger.info(f"필터링된 데이터 조회 결과: {json.dumps(response.get('Items', []), indent=2)}")
+        # 3. 조회 기간에 해당하는 데이터만 필터링
+        filtered_events = [
+            event for event in raw_events 
+            if this_week_start <= datetime.fromisoformat(event['start']['dateTime']) <= this_week_end
+        ]
+        logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
+        logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
         
         return {
-            'events': response.get('Items', []),
+            'events': filtered_events,
             'this_week_start': this_week_start.isoformat()
         }
         
     except Exception as e:
-        logger.error(f"DynamoDB에서 데이터 조회 중 오류 발생: {str(e)}")
-        logger.error(f"상세 오류: {traceback.format_exc()}")
+        logger.error(f"조회 중 오류: {str(e)}")
         return {'events': [], 'this_week_start': None}
 
 async def check_calendar_events(user_email: str):
