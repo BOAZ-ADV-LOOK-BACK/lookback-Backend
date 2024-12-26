@@ -184,7 +184,6 @@ async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
-        # 이번 주의 시작/종료 날짜 계산
         today = datetime.now(pytz.UTC)
         this_week_start = today - timedelta(days=today.weekday())
         this_week_end = this_week_start + timedelta(days=5)
@@ -194,12 +193,13 @@ async def get_weekly_activity_data(user_email: str) -> dict:
 
         logger.info(f"조회 기간 - 시작: {this_week_start}, 종료: {this_week_end}")
         
-        # 예약어 'start'를 피하기 위해 #st 별칭 사용
+        # start와 dateTime 모두 예약어이므로 별칭 처리
         response = table.query(
             KeyConditionExpression='user_id = :uid',
-            FilterExpression='#st.dateTime between :start_date and :end_date',
+            FilterExpression='#st.#dt between :start_date and :end_date',
             ExpressionAttributeNames={
-                '#st': 'start'  # 예약어 'start'에 대한 별칭 정의
+                '#st': 'start',  # start 예약어에 대한 별칭
+                '#dt': 'dateTime'  # dateTime 예약어에 대한 별칭
             },
             ExpressionAttributeValues={
                 ':uid': user_email,
