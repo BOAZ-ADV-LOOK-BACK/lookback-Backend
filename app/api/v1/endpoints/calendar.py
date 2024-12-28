@@ -171,6 +171,58 @@ async def get_dashboard_data(code):
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
 
 
+# 갓생지수 API
+@router.get("/dashboard-godLifeBar")
+async def get_godLife_bar(current_user: User = Depends(get_current_user)):
+    calendar_logger.info("갓생지수 데이터 로딩 시작...")
+    
+    # 활동 데이터 가져오기
+    processed_data = get_weekly_activity(current_user)
+    if not processed_data.get("success"):
+        calendar_logger.error("갓생지수를 가져오는데 실패했습니다.")
+        return {"success": False, "message": "Failed to fetch godLife data"}
+
+    calendar_logger.info("갓생지수 데이터 로딩 완료...")
+
+    # 갓생지수 계산
+    godLifeidx = godLifeIndex(processed_data.get("data", []))
+    if godLifeidx < 4:
+        calendar_logger.info("갓생이 아닙니다.")
+        return {"success": True, "godLifeBar": 0}
+
+    calendar_logger.info("갓생지수 데이터 전송 완료...")
+    
+    # 갓생지수 퍼센트 반환
+    godLifePercent = godLifeidx / 7 * 100
+    return {"success": True, "godLifeIdx": godLifePercent}
+
+
+## 갓생지수 판정 함수
+def godLifeIndex(weekly_data: dict) -> int:
+    """
+    일주일 중 하루의 총 이벤트 시간이 8시간 이상인 요일이 4번 이상일 경우 True를 반환.
+    
+    Args:
+        weekly_data (dict): process_weekly_activity_data 함수의 결과 데이터.
+    
+    Returns:
+        bool: 조건을 만족하면 True, 아니면 False.
+    """
+    try:
+        days_with_long_events = 0
+        
+        for day_data in weekly_data.get('this_week', []):
+            start_time = day_data.get('startTime', 0)
+            end_time = day_data.get('endTime', 0)
+            if end_time - start_time > 8.0:
+                days_with_long_events += 1
+        
+        return days_with_long_events
+    except Exception as e:
+        print(f"Error processing workload: {e}")
+        return False
+
+
 
 
 
