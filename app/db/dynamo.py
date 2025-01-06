@@ -223,7 +223,12 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         logger.info(f"[조회 기간] {this_week_start.strftime('%Y-%m-%d %H:%M')} ~ {this_week_end.strftime('%Y-%m-%d %H:%M')}")
 
         # 2. 데이터 조회
-        response = table.scan()
+        response = table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={
+                ':uid': user_email
+            }
+        )
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
         # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
