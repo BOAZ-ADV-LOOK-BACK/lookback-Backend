@@ -306,8 +306,10 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                         # 이벤트의 시작 시간이 날짜만 있는 경우 처리
                         if 'start' in sub_event:
                             if 'date' in sub_event.get('start', {}):
-                                processed_event['start_date'] = sub_event['start']['date'].strftime('%Y-%m-%d')
-                                processed_event['end_date'] = (datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+                                start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
+                                end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
+                                processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
+                                processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
                             elif 'dateTime' in sub_event.get('start', {}):
                                 processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
                                 processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
@@ -324,7 +326,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
             except Exception as e:
                 logger.error(f"[이벤트 전처리 오류] {str(e)}")
         
-        logger.info(f"[전처리 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
+        logger.info(f"[전처리 된 데이터 샘플]\n{preprocessed_events[:2]}")  # 처음 2개만 로깅
         
         # 4. 조회 기간 필터링
         filtered_events = [
