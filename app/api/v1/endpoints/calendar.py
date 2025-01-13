@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events, get_user_event, get_calendar_list_by_user
+from app.db.dynamo import *
 from app.models.user import User
 import httpx
 import json
@@ -169,36 +169,6 @@ async def get_dashboard_data(code):
     # 4. 프론트로 리턴
     # 2번에서 전처리 한 결과 리턴해주면 됨
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
-    
-#사용자 일정 별 총 시간 확인
-@router.post("/dashboard-spendingTime")
-async def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
-    
-    duration_by_calendar = await sum_time_by_calendar(current_user)
-    
-    return {"success": True, "spendingTime": duration_by_calendar}
-
-
-
-# 캘린더 이벤트 별  총 시간 계산 
-### 데이터 포맷 보고 수정 하긴 해야 함
-async def sum_time_by_calendar(current_user) -> dict[str, float]:
-    
-    #summary(캘린더이름): 소요시간(float)
-    user_duration_time = {}
-    
-    # 사용자 캘린더 리스트 가져오기 
-    user_cal_list = await get_calendar_list_by_user(current_user)
-    
-    for calendar in user_cal_list:
-        summary = calendar['summary']
-        cal_id = calendar['id']
-        user_duration_time[summary] = get_user_event(cal_id)
-        
-    
-    return user_duration_time
-
-
 
 
 # 갓생지수 API
@@ -255,7 +225,7 @@ def godLifeIndex(weekly_data: dict) -> int:
 
 # Category Dist API
 @router.post("/dashboard-category-dist")
-async def get_godLife_bar(current_user: User = Depends(get_current_user)):
+async def get_category(current_user: User = Depends(get_current_user)):
     """
     내 캘린더의 이벤트 수가 가장 많은 순으로 상위 6개의 캘린더 나열
 
@@ -274,20 +244,50 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
 
     """
     
-    calendar_logger.info("카테고리 분포 데이터 로딩 시작...")
-    
-    # 활동 데이터 가져오기
-    processed_data = await get_weekly_activity(current_user)
-    if not processed_data.get("success"):
-        calendar_logger.error("카테고리 분포 데이터를 가져오는데 실패했습니다.")
-        return {"success": False, "message": "Failed to fetch category dist data"}
+    try:
+        calendar_logger.info("카테고리 분포 데이터 로딩 시작...")
 
-    calendar_logger.info("카테고리 분포 데이터 로딩 완료...")
+        # 1. 캘린더 리스트 가져오기
+        cal_list = await get_calendar_list_by_user(current_user.email)
+        calendar_ids = {item['M']['id']['S']: 0 for item in cal_list}
+        calendar_logger.info(f"`cal_list`의 ID 추출 결과: {calendar_ids}")
 
-    # 갓생지수 계산    
-    weekly_data = processed_data.get("data", [])
+        # 2. 이벤트 데이터 가져오기
+        processed_data = await get_weekly_activity_data_per_user(current_user.email)
+        events = processed_data.get('events', [])
+        calendar_logger.info(f"주간 활동 데이터: {len(events)}개의 이벤트")
 
-    return category_dist(weekly_data)
+        # 3. 이벤트 데이터에서 캘린더별로 개수 세기
+        for event in events:
+            try:
+                event_id = event['M']['organizer']['M']['email']['S']
+                if event_id in calendar_ids:
+                    calendar_ids[event_id] += 1
+            except KeyError as e:
+                calendar_logger.error(f"이벤트 처리 중 KeyError 발생: {str(e)}")
+                continue
+
+        # 4. 데이터 정리 (상위 6개 추출)
+        sorted_categories = sorted(calendar_ids.items(), key=lambda x: x[1], reverse=True)[:6]
+        category_distribution = [
+            {"category": cal_id, "entry_number": count}
+            for cal_id, count in sorted_categories
+        ]
+
+        calendar_logger.info(f"카테고리 분포 데이터: {json.dumps(category_distribution, ensure_ascii=False)}")
+
+        return {
+            "success": True,
+            "categories": category_distribution
+        }
+
+    except Exception as e:
+        calendar_logger.error(f"카테고리 분포 데이터 조회 중 오류 발생: {str(e)}")
+        calendar_logger.error(f"상세 에러: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail="카테고리 분포 데이터 조회 실패"
+        )
 
 
 #### 켈린더 데이터 전처리 함수
