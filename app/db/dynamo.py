@@ -6,6 +6,7 @@ import pytz
 from app.api.v1.endpoints import google, login
 from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer
+from boto3.dynamodb.conditions import Key
 from app.api.v1.endpoints.google import get_calendar_events
 from dotenv import load_dotenv
 import boto3
@@ -26,6 +27,59 @@ dynamodb_client = boto3.resource(
    aws_access_key_id=AWS_ACCESS_kEY_ID,
    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 )
+
+async def get_user_event(user_email: str, cal_id: str) -> float:
+    
+    table = dynamodb_client.Table('lookback-calendar-events')
+    
+    response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
+    
+    items = response['Items']
+    
+    for item in items:
+        this_week_events_time = filter_this_week(item['events'])
+        
+    return this_week_events_time 
+            
+            
+###사용자 캘린더 중 이번주에 해당하는 것만 필터링
+async def filter_this_week(events):
+    
+    duration_time = 0 
+    korea_tz = pytz.timezone("Asia/Seoul")
+    now_korea = datetime.now(korea_tz)
+    
+    start_of_week = (now_korea - timedelta(days=now_korea.weekday())).date() 
+    end_of_week = start_of_week + timedelta(days=6)
+    
+    for event in events:
+        if 'dateTime' in event['start']:
+            start = datetime.strptime(event['start']['dateTime'][:10], '%Y-%m-%d').date()
+            start_time = event['start']['dateTime']
+            
+            #일정 시작 시간 추출
+            start_time = datetime.fromisoformat(start_time)
+        else:
+            start = datetime.strptime(event['start']['date'], '%Y-%m-%d').date()
+            
+        if 'dateTime' in event['end']:
+            end = datetime.strptime(event['end']['dateTime'][:10] , '%Y-%m-%d').date()
+            end_time = event['end']['dateTime']
+            end_time = datetime.fromisoformat(end_time)
+        else:
+            end = datetime.strptime(event['end']['date'], '%Y-%m-%d').date()
+            
+        if start_of_week <= start <= end_of_week or start_of_week <= end <= end_of_week:
+            try:
+                duration_time += (end_time - start_time).total_seconds() / 60
+            except Exception as e:
+                print('error call ')
+                
+                print(f'error:{e}')
+            
+        
+    return duration_time
 
 def create_dynamodb_data(user_email: str, cal_list: dict) -> dict:
    """
@@ -293,3 +347,4 @@ async def check_calendar_events(user_email: str):
     except Exception as e:
         logger.error(f"데이터 확인 중 오류 발생: {str(e)}")
         return []
+

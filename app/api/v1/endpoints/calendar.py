@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events
+from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events, get_user_event
 from app.models.user import User
 import httpx
 import json
@@ -169,6 +169,34 @@ async def get_dashboard_data(code):
     # 4. 프론트로 리턴
     # 2번에서 전처리 한 결과 리턴해주면 됨
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
+    
+#사용자 일정 별 총 시간 확인
+@router("/dashboard-spendingTime")
+def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
+    
+    duration_by_calendar = sum_time_by_calendar(current_user)
+    
+    return {"success": True, "spendingTime": duration_by_calendar}
+
+
+
+# 캘린더 이벤트 별  총 시간 계산 
+### 데이터 포맷 보고 수정 하긴 해야 함
+def sum_time_by_calendar(current_user) -> dict[str, float]:
+    
+    #summary(캘린더이름): 소요시간(float)
+    user_duration_time = {}
+    
+    # 사용자 캘린더 리스트 가져오기 
+    user_cal_list = get_calendar_list_by_user(current_user)
+    
+    for calendar in user_cal_list:
+        summary = calendar['summary']
+        cal_id = calendar['id']
+        user_duration_time[summary] = get_user_event(cal_id)
+        
+    
+    return user_duration_time
 
 
 # 갓생지수 API
