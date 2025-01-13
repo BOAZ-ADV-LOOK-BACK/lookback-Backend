@@ -172,7 +172,7 @@ async def get_dashboard_data(code):
 
 
 # 갓생지수 API
-@router.get("/dashboard-godLifeBar")
+@router.post("/dashboard-godLifeBar")
 async def get_godLife_bar(current_user: User = Depends(get_current_user)):
     calendar_logger.info("갓생지수 데이터 로딩 시작...")
     
