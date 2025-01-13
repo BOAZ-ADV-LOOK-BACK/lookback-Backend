@@ -44,7 +44,7 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
             
             
 ###사용자 캘린더 중 이번주에 해당하는 것만 필터링
-async def filter_this_week(events):
+def filter_this_week(events):
     
     duration_time = 0 
     korea_tz = pytz.timezone("Asia/Seoul")
