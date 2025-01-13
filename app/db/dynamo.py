@@ -206,6 +206,7 @@ async def store_calendar_events(user_email: str, access_token: str):
                 logger.info(f"캘린더 {calendar_id} 이벤트 처리 시작")
                 
                 events = await get_calendar_events(access_token, [calendar_id])
+                logger.info(f"[이벤트 가져오기 완료] 캘린더 ID: {calendar_id}, 이벤트 수: {len(events[0].get('events', []))}")
                 if events and events[0]['events']:
                     events_data = {
                         'user_id': user_email,
@@ -269,7 +270,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         # 1. 조회 기간 설정
         today = datetime.now(pytz.UTC)
         this_week_start = today - timedelta(days=today.weekday())
-        this_week_end = this_week_start + timedelta(days=5)
+        this_week_end = this_week_start + timedelta(days=6)
         
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
