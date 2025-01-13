@@ -295,36 +295,31 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                 if 'events' in event:
                     for sub_event in event['events']:
                         processed_event = {
-                            'summary': event.get('summary'),
+                            'summary': sub_event.get('summary'),
                             'start_date': None,
                             'end_date': None,
                             'start_dateTime': None,
                             'end_dateTime': None,
-                            'sequence': event.get('sequence'),
-                            'description': event.get('description')
+                            'sequence': sub_event.get('sequence'),
+                            'description': sub_event.get('description')
                         }
                         # 이벤트의 시작 시간이 날짜만 있는 경우 처리
                         if 'start' in sub_event:
                             if 'date' in sub_event.get('start', {}):
                                 start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
-                                start_date = pytz.UTC.localize(start_date)
-                                end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d')
-                                end_date = pytz.UTC.localize(end_date) - timedelta(days=1)
+                                end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
                                 processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
                                 processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
-
                             elif 'dateTime' in sub_event.get('start', {}):
-                                start_time = datetime.fromisoformat(sub_event['start']['dateTime'])
-                                end_time = datetime.fromisoformat(sub_event['end']['dateTime'])
-                                processed_event['start_dateTime'] = start_time
-                                processed_event['end_dateTime'] = end_time
-                                processed_event['start_date'] = start_time.strftime('%Y-%m-%d')
-                                processed_event['end_date'] = end_time.strftime('%Y-%m-%d')
+                                processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
+                                processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
+                                processed_event['start_date'] = processed_event['start_dateTime'].strftime('%Y-%m-%d')
+                                processed_event['end_date'] = processed_event['end_dateTime'].strftime('%Y-%m-%d')
 
                                 # 종료 시간이 자정인 경우 처리
                                 if processed_event['end_dateTime'].time() == datetime.min.time():
-                                    processed_event['end_dateTime'] = end_time - timedelta(seconds=1)
-                                    processed_event['end_date'] = (end_time - timedelta(days=1)).strftime('%Y-%m-%d')
+                                    processed_event['end_dateTime'] = processed_event['end_dateTime'] - timedelta(seconds=1)
+                                    processed_event['end_date'] = (processed_event['end_dateTime'] - timedelta(days=1)).strftime('%Y-%m-%d')
 
                         preprocessed_events.append(processed_event)
                   
