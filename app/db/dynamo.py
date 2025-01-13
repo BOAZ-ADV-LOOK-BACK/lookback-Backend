@@ -276,6 +276,7 @@ async def get_weekly_activity_data_per_user(user_email: str) -> dict:
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
 
+        logger.info(f"[현재 사용자] {user_email}")
         logger.info(f"[조회 기간] {this_week_start.strftime('%Y-%m-%d %H:%M')} ~ {this_week_end.strftime('%Y-%m-%d %H:%M')}")
 
         # 2. 데이터 조회
