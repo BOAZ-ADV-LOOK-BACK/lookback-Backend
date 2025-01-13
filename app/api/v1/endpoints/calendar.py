@@ -223,7 +223,6 @@ def godLifeIndex(weekly_data: dict) -> int:
         print(f"Error processing workload: {e}")
         return False
 
-# Category Dist API
 @router.post("/dashboard-category-dist")
 async def get_category(current_user: User = Depends(get_current_user)):
     """
@@ -250,7 +249,9 @@ async def get_category(current_user: User = Depends(get_current_user)):
         # 1. 캘린더 리스트 가져오기
         cal_list = await get_calendar_list_by_user(current_user.email)
         calendar_logger.info(f"cal_list 구조: {cal_list}")
-        calendar_ids = {item['M']['id']['S']: 0 for item in cal_list}
+
+        # 캘린더 리스트에서 id만 추출하여 calendar_ids 딕셔너리 생성
+        calendar_ids = {item['id']: 0 for item in cal_list}  # M이 없으므로 item['id']로 접근
         calendar_logger.info(f"`cal_list`의 ID 추출 결과: {calendar_ids}")
 
         # 2. 이벤트 데이터 가져오기
@@ -261,7 +262,7 @@ async def get_category(current_user: User = Depends(get_current_user)):
         # 3. 이벤트 데이터에서 캘린더별로 개수 세기
         for event in events:
             try:
-                event_id = event['M']['organizer']['M']['email']['S']
+                event_id = event['organizer']['email']  # event에서 직접 email 접근
                 if event_id in calendar_ids:
                     calendar_ids[event_id] += 1
             except KeyError as e:
@@ -289,6 +290,7 @@ async def get_category(current_user: User = Depends(get_current_user)):
             status_code=500,
             detail="카테고리 분포 데이터 조회 실패"
         )
+
 
 
 #### 켈린더 데이터 전처리 함수
