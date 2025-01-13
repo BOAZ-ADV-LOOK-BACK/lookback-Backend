@@ -252,6 +252,8 @@ async def get_category(current_user: User = Depends(get_current_user)):
 
         # 캘린더 리스트에서 id와 summary 추출하여 calendar_ids 딕셔너리 생성
         calendar_ids = {item['id']: item['summary'] for item in cal_list}
+        # 각 calendar_id는 처음에 0으로 카운트를 설정
+        event_count = {item['id']: 0 for item in cal_list}
         calendar_logger.info(f"`cal_list`의 ID와 summary 추출 결과: {calendar_ids}")
 
         # 2. 이벤트 데이터 가져오기
@@ -259,18 +261,27 @@ async def get_category(current_user: User = Depends(get_current_user)):
         events = processed_data.get('events', [])
         calendar_logger.info(f"주간 활동 데이터: {len(events)}개의 이벤트")
 
+        if not events:
+            calendar_logger.info("주간 활동 데이터가 없습니다.")
+
         # 3. 이벤트 데이터에서 캘린더별로 개수 세기
         for event in events:
             try:
                 event_id = event['organizer']['email']  # event에서 직접 email 접근
-                if event_id in calendar_ids:
-                    calendar_ids[event_id] += 1
+                if event_id in event_count:
+                    event_count[event_id] += 1
+                else:
+                    # 존재하지 않는 이벤트가 있을 경우, 추가하여 카운트 시작
+                    event_count[event_id] = 1
             except KeyError as e:
                 calendar_logger.error(f"이벤트 처리 중 KeyError 발생: {str(e)}")
                 continue
+            except Exception as e:
+                calendar_logger.error(f"이벤트 처리 중 예기치 않은 오류 발생: {str(e)}")
+                continue
 
         # 4. 데이터 정리 (상위 6개 추출)
-        sorted_categories = sorted(calendar_ids.items(), key=lambda x: x[1], reverse=True)[:6]
+        sorted_categories = sorted(event_count.items(), key=lambda x: x[1], reverse=True)[:6]
 
         # 5. 카테고리 분포 데이터 구성 (cal_id, summary, entry_number 포함)
         category_distribution = [
@@ -281,21 +292,22 @@ async def get_category(current_user: User = Depends(get_current_user)):
             }
             for cal_id, count in sorted_categories
         ]
-        
+
         calendar_logger.info(f"카테고리 분포 데이터: {json.dumps(category_distribution, ensure_ascii=False)}")
 
+        # 6. 최종 데이터 반환
         return {
             "success": True,
             "categories": category_distribution
         }
 
     except Exception as e:
-        calendar_logger.error(f"카테고리 분포 데이터 조회 중 오류 발생: {str(e)}")
-        calendar_logger.error(f"상세 에러: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail="카테고리 분포 데이터 조회 실패"
-        )
+        calendar_logger.error(f"카테고리 분포 데이터 로딩 중 예기치 않은 오류 발생: {str(e)}")
+        return {
+            "success": False,
+            "error_message": f"오류가 발생했습니다: {str(e)}"
+        }
+
 
 
 
