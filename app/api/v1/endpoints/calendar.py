@@ -184,8 +184,9 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
 
     calendar_logger.info("갓생지수 데이터 로딩 완료...")
 
-    # 갓생지수 계산
+    # 갓생지수 계산    
     godLifeidx = godLifeIndex(processed_data.get("data", []))
+    calendar_logger.info("갓생지수: \n", godLifeidx)
     if godLifeidx < 4:
         calendar_logger.info("갓생이 아닙니다.")
         return {"success": True, "godLifeBar": 0}
@@ -200,7 +201,7 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
 ## 갓생지수 판정 함수
 def godLifeIndex(weekly_data: dict) -> int:
     """
-    일주일 중 하루의 총 이벤트 시간이 8시간 이상인 요일이 4번 이상일 경우 True를 반환.
+    일주일 중 하루의 총 이벤트 시간이 8시간 이상인 요일 횟수를 반환, 4번 이상일 경우 갓생
     
     Args:
         weekly_data (dict): process_weekly_activity_data 함수의 결과 데이터.
