@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import pytz
 from app.api.v1.endpoints import login, users, google, calendar 
 from app.api.deps import get_current_user
-from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events, get_user_event
+from app.db.dynamo import check_calendar_events, get_weekly_activity_data, put_calendar_list, store_calendar_events, get_user_event, get_calendar_list_by_user
 from app.models.user import User
 import httpx
 import json
@@ -197,6 +197,8 @@ def sum_time_by_calendar(current_user) -> dict[str, float]:
         
     
     return user_duration_time
+
+
 
 
 # 갓생지수 API
