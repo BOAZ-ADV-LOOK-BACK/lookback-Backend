@@ -250,9 +250,9 @@ async def get_category(current_user: User = Depends(get_current_user)):
         cal_list = await get_calendar_list_by_user(current_user.email)
         calendar_logger.info(f"cal_list 구조: {cal_list}")
 
-        # 캘린더 리스트에서 id만 추출하여 calendar_ids 딕셔너리 생성
-        calendar_ids = {item['id']: 0 for item in cal_list}  # M이 없으므로 item['id']로 접근
-        calendar_logger.info(f"`cal_list`의 ID 추출 결과: {calendar_ids}")
+        # 캘린더 리스트에서 id와 summary 추출하여 calendar_ids 딕셔너리 생성
+        calendar_ids = {item['id']: item['summary'] for item in cal_list}
+        calendar_logger.info(f"`cal_list`의 ID와 summary 추출 결과: {calendar_ids}")
 
         # 2. 이벤트 데이터 가져오기
         processed_data = await get_weekly_activity_data_per_user(current_user.email)
@@ -271,11 +271,17 @@ async def get_category(current_user: User = Depends(get_current_user)):
 
         # 4. 데이터 정리 (상위 6개 추출)
         sorted_categories = sorted(calendar_ids.items(), key=lambda x: x[1], reverse=True)[:6]
+
+        # 5. 카테고리 분포 데이터 구성 (cal_id, summary, entry_number 포함)
         category_distribution = [
-            {"category": cal_id, "entry_number": count}
+            {
+                "category": cal_id,
+                "summary": calendar_ids.get(cal_id, "정보 없음"),  # summary가 없을 경우 '정보 없음'으로 처리
+                "entry_number": count
+            }
             for cal_id, count in sorted_categories
         ]
-
+        
         calendar_logger.info(f"카테고리 분포 데이터: {json.dumps(category_distribution, ensure_ascii=False)}")
 
         return {
