@@ -208,7 +208,8 @@ async def push_to_dynamodb_events(events_data: dict):
 
 from datetime import datetime, timedelta
 
-async def get_weekly_activity_data(user_email: str) -> dict:
+# 사용자 별로 미리 필터링해서 데이터 가져오기
+async def get_weekly_activity_data_per_user(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
     try:
@@ -224,11 +225,55 @@ async def get_weekly_activity_data(user_email: str) -> dict:
 
         # 2. 데이터 조회
         response = table.query(
-            KeyConditionExpression='user_id = :uid',
-            ExpressionAttributeValues={
-                ':uid': user_email
-            }
+            KeyConditionExpression=Key('user_id').eq(user_email)
         )
+        raw_events = response.get('Item', [])
+        logger.info(f"[전체 데이터 수] {len(raw_events)}개")
+        # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
+        
+        # 3. 조회 기간에 해당하는 데이터만 필터링
+        filtered_events = []
+        for event in raw_events:
+            try:
+                if 'events' in event:  # events 배열이 있는 경우
+                    for sub_event in event['events']:
+                        if 'start' in sub_event and 'dateTime' in sub_event['start']:
+                            event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+                            if this_week_start <= event_time <= this_week_end:
+                                filtered_events.append(sub_event)
+            except Exception as sub_e:
+                logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
+                continue
+                
+        logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
+        logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
+        
+        return {
+            'events': filtered_events,
+            'this_week_start': this_week_start.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"조회 중 오류: {str(e)}")
+        logger.error(f"전체 오류 내용: {traceback.format_exc()}")
+        return {'events': [], 'this_week_start': None}
+
+async def get_weekly_activity_data(user_email: str) -> dict:
+    table = dynamodb_client.Table("lookback-calendar-events")
+    
+    try:
+        # 1. 조회 기간 설정
+        today = datetime.now(pytz.UTC)
+        this_week_start = today - timedelta(days=today.weekday())
+        this_week_end = this_week_start + timedelta(days=5)
+        
+        this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
+
+        logger.info(f"[조회 기간] {this_week_start.strftime('%Y-%m-%d %H:%M')} ~ {this_week_end.strftime('%Y-%m-%d %H:%M')}")
+
+        # 2. 데이터 조회
+        response = table.scan()
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
         # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
