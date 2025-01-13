@@ -270,7 +270,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         # 1. 조회 기간 설정
         today = datetime.now(pytz.UTC)
         this_week_start = today - timedelta(days=today.weekday())
-        this_week_end = this_week_start + timedelta(days=5)
+        this_week_end = this_week_start + timedelta(days=6)
         
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
