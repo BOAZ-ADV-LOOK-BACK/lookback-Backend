@@ -186,7 +186,7 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
 
     # 갓생지수 계산    
     godLifeidx = godLifeIndex(processed_data.get("data", []))
-    calendar_logger.info("갓생지수: \n", godLifeidx)
+    calendar_logger.info("갓생지수: {godLifeidx}")
     if godLifeidx < 4:
         calendar_logger.info("갓생이 아닙니다.")
         return {"success": True, "godLifeBar": 0}
