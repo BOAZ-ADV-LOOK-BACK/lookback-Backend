@@ -177,7 +177,7 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
     calendar_logger.info("갓생지수 데이터 로딩 시작...")
     
     # 활동 데이터 가져오기
-    processed_data = get_weekly_activity(current_user)
+    processed_data = await get_weekly_activity(current_user)
     if not processed_data.get("success"):
         calendar_logger.error("갓생지수를 가져오는데 실패했습니다.")
         return {"success": False, "message": "Failed to fetch godLife data"}
