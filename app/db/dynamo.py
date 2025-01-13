@@ -376,10 +376,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         # 4. 조회 기간 필터링
         filtered_events = [
             event for event in preprocessed_events
-            if (
-                (event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')) or
-                (event['start_dateTime'] and this_week_start.isoformat() <= event['start_dateTime'] <= this_week_end.isoformat())
-            )
+            if event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')
         ]
         # for event in raw_events:
         #     try:
