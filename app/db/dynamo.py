@@ -6,6 +6,7 @@ import pytz
 from app.api.v1.endpoints import google, login
 from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer
+from boto3.dynamodb.conditions import Key
 from app.api.v1.endpoints.google import get_calendar_events
 from dotenv import load_dotenv
 import boto3
@@ -26,6 +27,59 @@ dynamodb_client = boto3.resource(
    aws_access_key_id=AWS_ACCESS_kEY_ID,
    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 )
+
+async def get_user_event(user_email: str, cal_id: str) -> float:
+    
+    table = dynamodb_client.Table('lookback-calendar-events')
+    
+    response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
+    
+    items = response['Items']
+    
+    for item in items:
+        this_week_events_time = filter_this_week(item['events'])
+        
+    return this_week_events_time 
+            
+            
+###사용자 캘린더 중 이번주에 해당하는 것만 필터링
+def filter_this_week(events):
+    
+    duration_time = 0 
+    korea_tz = pytz.timezone("Asia/Seoul")
+    now_korea = datetime.now(korea_tz)
+    
+    start_of_week = (now_korea - timedelta(days=now_korea.weekday())).date() 
+    end_of_week = start_of_week + timedelta(days=6)
+    
+    for event in events:
+        if 'dateTime' in event['start']:
+            start = datetime.strptime(event['start']['dateTime'][:10], '%Y-%m-%d').date()
+            start_time = event['start']['dateTime']
+            
+            #일정 시작 시간 추출
+            start_time = datetime.fromisoformat(start_time)
+        else:
+            start = datetime.strptime(event['start']['date'], '%Y-%m-%d').date()
+            
+        if 'dateTime' in event['end']:
+            end = datetime.strptime(event['end']['dateTime'][:10] , '%Y-%m-%d').date()
+            end_time = event['end']['dateTime']
+            end_time = datetime.fromisoformat(end_time)
+        else:
+            end = datetime.strptime(event['end']['date'], '%Y-%m-%d').date()
+            
+        if start_of_week <= start <= end_of_week or start_of_week <= end <= end_of_week:
+            try:
+                duration_time += (end_time - start_time).total_seconds() / 60
+            except Exception as e:
+                print('error call ')
+                
+                print(f'error:{e}')
+            
+        
+    return duration_time
 
 def create_dynamodb_data(user_email: str, cal_list: dict) -> dict:
    """
@@ -152,6 +206,7 @@ async def store_calendar_events(user_email: str, access_token: str):
                 logger.info(f"캘린더 {calendar_id} 이벤트 처리 시작")
                 
                 events = await get_calendar_events(access_token, [calendar_id])
+                logger.info(f"[이벤트 가져오기 완료] 캘린더 ID: {calendar_id}, 이벤트 수: {len(events[0].get('events', []))}")
                 if events and events[0]['events']:
                     events_data = {
                         'user_id': user_email,
@@ -216,7 +271,7 @@ async def get_weekly_activity_data_per_user(user_email: str) -> dict:
         # 1. 조회 기간 설정
         today = datetime.now(pytz.UTC)
         this_week_start = today - timedelta(days=today.weekday())
-        this_week_end = this_week_start + timedelta(days=5)
+        this_week_end = this_week_start + timedelta(days=6)
         
         this_week_start = this_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         this_week_end = this_week_end.replace(hour=23, minute=59, second=59)
@@ -276,21 +331,67 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         response = table.scan()
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
-        # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
-        
-        # 3. 조회 기간에 해당하는 데이터만 필터링
-        filtered_events = []
+        # logger.info(f"[데이터 구조 확인] {raw_events[:2]}")  # 두 번째 데이터의 구조 확인
+
+        # 3. 데이터 전처리
+        preprocessed_events = []
         for event in raw_events:
             try:
-                if 'events' in event:  # events 배열이 있는 경우
+                if 'events' in event:
                     for sub_event in event['events']:
-                        if 'start' in sub_event and 'dateTime' in sub_event['start']:
-                            event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
-                            if this_week_start <= event_time <= this_week_end:
-                                filtered_events.append(sub_event)
-            except Exception as sub_e:
-                logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
-                continue
+                        processed_event = {
+                            'summary': event.get('summary'),
+                            'start_date': None,
+                            'end_date': None,
+                            'start_dateTime': None,
+                            'end_dateTime': None,
+                            'sequence': event.get('sequence'),
+                            'description': event.get('description')
+                        }
+                        # 이벤트의 시작 시간이 날짜만 있는 경우 처리
+                        if 'start' in sub_event:
+                            if 'date' in sub_event.get('start', {}):
+                                start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
+                                end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
+                                processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
+                                processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
+                            elif 'dateTime' in sub_event.get('start', {}):
+                                processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
+                                processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
+                                processed_event['start_date'] = processed_event['start_dateTime'].strftime('%Y-%m-%d')
+                                processed_event['end_date'] = processed_event['end_dateTime'].strftime('%Y-%m-%d')
+
+                                # 종료 시간이 자정인 경우 처리
+                                if processed_event['end_dateTime'].time() == datetime.min.time():
+                                    processed_event['end_dateTime'] = processed_event['end_dateTime'] - timedelta(seconds=1)
+                                    processed_event['end_date'] = (processed_event['end_dateTime'] - timedelta(days=1)).strftime('%Y-%m-%d')
+
+                        preprocessed_events.append(processed_event)
+                  
+            except Exception as e:
+                logger.error(f"[이벤트 전처리 오류] {str(e)}")
+        
+        logger.info(f"[전처리 된 데이터 샘플]\n{preprocessed_events[:2]}")  # 처음 2개만 로깅
+        
+        # 4. 조회 기간 필터링
+        filtered_events = [
+            event for event in preprocessed_events
+            if (
+                (event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')) or
+                (event['start_dateTime'] and this_week_start.isoformat() <= event['start_dateTime'] <= this_week_end.isoformat())
+            )
+        ]
+        # for event in raw_events:
+        #     try:
+        #         if 'events' in event:  # events 배열이 있는 경우
+        #             for sub_event in event['events']:
+        #                 if 'start' in sub_event and 'dateTime' in sub_event['start']:
+        #                     event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+        #                     if this_week_start <= event_time <= this_week_end:
+        #                         filtered_events.append(sub_event)
+        #     except Exception as sub_e:
+        #         logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
+        #         continue
                 
         logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
         logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
@@ -338,3 +439,4 @@ async def check_calendar_events(user_email: str):
     except Exception as e:
         logger.error(f"데이터 확인 중 오류 발생: {str(e)}")
         return []
+
