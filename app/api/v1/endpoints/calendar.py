@@ -223,8 +223,9 @@ def godLifeIndex(weekly_data: dict) -> int:
         print(f"Error processing workload: {e}")
         return False
 
-
-def category_dist(weekly_data: dict):
+# Category Dist API
+@router.post("/dashboard-category-dist")
+async def get_godLife_bar(current_user: User = Depends(get_current_user)):
     """
     내 캘린더의 이벤트 수가 가장 많은 순으로 상위 6개의 캘린더 나열
 
@@ -242,6 +243,21 @@ def category_dist(weekly_data: dict):
     }
 
     """
+    
+    calendar_logger.info("카테고리 분포 데이터 로딩 시작...")
+    
+    # 활동 데이터 가져오기
+    processed_data = await get_weekly_activity(current_user)
+    if not processed_data.get("success"):
+        calendar_logger.error("카테고리 분포 데이터를 가져오는데 실패했습니다.")
+        return {"success": False, "message": "Failed to fetch category dist data"}
+
+    calendar_logger.info("카테고리 분포 데이터 로딩 완료...")
+
+    # 갓생지수 계산    
+    weekly_data = processed_data.get("data", [])
+
+    return category_dist(weekly_data)
 
 
 #### 켈린더 데이터 전처리 함수
