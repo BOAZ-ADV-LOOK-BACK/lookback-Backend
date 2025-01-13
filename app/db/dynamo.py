@@ -231,8 +231,8 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         )
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
-        # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
-        
+        logger.info(f"[데이터 구조 확인] {raw_events[:2]}")  # 두 번째 데이터의 구조 확인
+
         # 3. 조회 기간에 해당하는 데이터만 필터링
         filtered_events = []
         for event in raw_events:
