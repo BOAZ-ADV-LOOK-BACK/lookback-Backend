@@ -249,6 +249,7 @@ async def get_category(current_user: User = Depends(get_current_user)):
 
         # 1. 캘린더 리스트 가져오기
         cal_list = await get_calendar_list_by_user(current_user.email)
+        calendar_logger.info(f"cal_list 구조: {cal_list}")
         calendar_ids = {item['M']['id']['S']: 0 for item in cal_list}
         calendar_logger.info(f"`cal_list`의 ID 추출 결과: {calendar_ids}")
 
