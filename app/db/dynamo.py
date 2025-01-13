@@ -301,10 +301,10 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                 'description': event.get('description')
             }
             # 이벤트의 시작 시간이 날짜만 있는 경우 처리
-            if 'date' in event['start']:
+            if 'date' in event.get('start', {}):
                 processed_event['start_date'] = event['start']['date']
                 processed_event['end_date'] = (datetime.strptime(event['end']['date'], '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-            elif 'dateTime' in event['start']:
+            elif 'dateTime' in event.get('start', {}):
                 processed_event['start_dateTime'] = event['start']['dateTime']
                 processed_event['end_dateTime'] = event['end']['dateTime']
                 processed_event['start_date'] = processed_event['start_dateTime'][:10]
