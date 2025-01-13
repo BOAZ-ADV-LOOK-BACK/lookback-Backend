@@ -171,7 +171,7 @@ async def get_dashboard_data(code):
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
     
 #사용자 일정 별 총 시간 확인
-@router("/dashboard-spendingTime")
+@router.post("/dashboard-spendingTime")
 def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
     
     duration_by_calendar = sum_time_by_calendar(current_user)
