@@ -172,9 +172,9 @@ async def get_dashboard_data(code):
     
 #사용자 일정 별 총 시간 확인
 @router.post("/dashboard-spendingTime")
-def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
+async def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
     
-    duration_by_calendar = sum_time_by_calendar(current_user)
+    duration_by_calendar = await sum_time_by_calendar(current_user)
     
     return {"success": True, "spendingTime": duration_by_calendar}
 
@@ -182,13 +182,13 @@ def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
 
 # 캘린더 이벤트 별  총 시간 계산 
 ### 데이터 포맷 보고 수정 하긴 해야 함
-def sum_time_by_calendar(current_user) -> dict[str, float]:
+async def sum_time_by_calendar(current_user) -> dict[str, float]:
     
     #summary(캘린더이름): 소요시간(float)
     user_duration_time = {}
     
     # 사용자 캘린더 리스트 가져오기 
-    user_cal_list = get_calendar_list_by_user(current_user)
+    user_cal_list = await get_calendar_list_by_user(current_user)
     
     for calendar in user_cal_list:
         summary = calendar['summary']
