@@ -266,6 +266,9 @@ from datetime import datetime, timedelta
 # 사용자 별로 미리 필터링해서 데이터 가져오기
 async def get_weekly_activity_data_per_user(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
+
+
+
     
     try:
         # 1. 조회 기간 설정
@@ -280,10 +283,14 @@ async def get_weekly_activity_data_per_user(user_email: str) -> dict:
         logger.info(f"[조회 기간] {this_week_start.strftime('%Y-%m-%d %H:%M')} ~ {this_week_end.strftime('%Y-%m-%d %H:%M')}")
 
         # 2. 데이터 조회
+        
+
         response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_email)
         )
-        raw_events = response.get('Item', [])
+        
+        raw_events = response.get('Items', [])
+        logger.info(f"[전체 데이터] {raw_events}")
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
         # logger.info(f"[데이터 구조 확인] {raw_events[:1]}")  # 첫 번째 데이터의 구조 확인
         
