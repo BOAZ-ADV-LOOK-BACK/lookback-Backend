@@ -389,7 +389,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         #     except Exception as sub_e:
         #         logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
         #         continue
-                
+        #### 커밋용        
         logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
         logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
         
