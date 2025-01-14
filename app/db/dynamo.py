@@ -398,6 +398,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                             if 'date' in sub_event.get('start', {}):
                                 start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
                                 end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
+                                start_date = pytz.UTC.localize(start_date)
                                 event_time = start_date
                             
                             # datetime이 있는 경우 처리
