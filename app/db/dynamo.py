@@ -386,11 +386,10 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         #     if event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')
         # ]
         # 3. 필터링된 이벤트 처리
-        processed_raw_events = []
+        filtered_events = []
         for event in raw_events:
             try:
                 if 'events' in event:
-                    filtered_sub_events = []
                     for sub_event in event['events']:
                         processed_sub_event = sub_event.copy()  # 원본 이벤트 복사
                         
@@ -419,12 +418,9 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                             # 이벤트 시간이 이번 주에 속하는지 확인
                             week_start = this_week_start.strftime('%Y-%m-%d')
                             week_end = this_week_end.strftime('%Y-%m-%d')
+
                             if week_start <= event_date <= week_end:
-                                filtered_sub_events.append(processed_sub_event)
-                    if filtered_sub_events:  # 필터링된 이벤트가 있는 경우만 추가
-                        processed_event = event.copy()  # 원본 이벤트 메타데이터 복사
-                        processed_event['events'] = filtered_sub_events
-                        processed_raw_events.append(processed_event)
+                                filtered_events.append(processed_sub_event)
 
             except Exception as sub_e:
                 logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
@@ -441,13 +437,15 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         #         logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
         #         continue
         #### 커밋용        
-        logger.info(f"[필터링 후 데이터 수] {len(processed_raw_events)}개")
-        logger.info(f"[필터링 된 데이터 샘플]\n{processed_raw_events[:2]}")  # 처음 2개만 로깅
+        logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
+        logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
         
-        return {
-            'events': processed_raw_events,
+        result = {
+            'events': filtered_events,
             'this_week_start': this_week_start.isoformat()
         }
+
+        return result
         
     except Exception as e:
         logger.error(f"조회 중 오류: {str(e)}")
