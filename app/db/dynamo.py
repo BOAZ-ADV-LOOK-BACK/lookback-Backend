@@ -341,50 +341,86 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         # logger.info(f"[데이터 구조 확인] {raw_events[:2]}")  # 두 번째 데이터의 구조 확인
 
         # 3. 데이터 전처리
-        preprocessed_events = []
+        # preprocessed_events = []
+        # for event in raw_events:
+        #     try:
+        #         if 'events' in event:
+        #             for sub_event in event['events']:
+        #                 processed_event = {
+        #                     'summary': sub_event.get('summary'),
+        #                     'start_date': None,
+        #                     'end_date': None,
+        #                     'start_dateTime': None,
+        #                     'end_dateTime': None,
+        #                     'sequence': sub_event.get('sequence'),
+        #                     'description': sub_event.get('description')
+        #                 }
+        #                 # 이벤트의 시작 시간이 날짜만 있는 경우 처리
+        #                 if 'start' in sub_event:
+        #                     if 'date' in sub_event.get('start', {}):
+        #                         start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
+        #                         end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
+        #                         processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
+        #                         processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
+        #                     elif 'dateTime' in sub_event.get('start', {}):
+        #                         processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
+        #                         processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
+        #                         processed_event['start_date'] = processed_event['start_dateTime'].strftime('%Y-%m-%d')
+        #                         processed_event['end_date'] = processed_event['end_dateTime'].strftime('%Y-%m-%d')
+
+        #                         # 종료 시간이 자정인 경우 처리
+        #                         if processed_event['end_dateTime'].time() == datetime.min.time():
+        #                             processed_event['end_dateTime'] = processed_event['end_dateTime'] - timedelta(seconds=1)
+        #                             processed_event['end_date'] = (processed_event['end_dateTime'] - timedelta(days=1)).strftime('%Y-%m-%d')
+
+        #                 preprocessed_events.append(processed_event)
+                  
+        #     except Exception as e:
+        #         logger.error(f"[이벤트 전처리 오류] {str(e)}")
+        
+        # logger.info(f"[전처리 된 데이터 샘플]\n{preprocessed_events[:2]}")  # 처음 2개만 로깅
+        
+        # # 4. 조회 기간 필터링
+        # filtered_events = [
+        #     event for event in preprocessed_events
+        #     if event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')
+        # ]
+        # 3. 필터링된 이벤트 처리
+        filtered_events = []
         for event in raw_events:
             try:
                 if 'events' in event:
                     for sub_event in event['events']:
-                        processed_event = {
-                            'summary': sub_event.get('summary'),
-                            'start_date': None,
-                            'end_date': None,
-                            'start_dateTime': None,
-                            'end_dateTime': None,
-                            'sequence': sub_event.get('sequence'),
-                            'description': sub_event.get('description')
-                        }
-                        # 이벤트의 시작 시간이 날짜만 있는 경우 처리
+                        processed_sub_event = sub_event.copy()  # 원본 이벤트 복사
+                        
                         if 'start' in sub_event:
+                            # 날짜만 있는 경우 처리
                             if 'date' in sub_event.get('start', {}):
                                 start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
                                 end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
-                                processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
-                                processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
+                                event_time = start_date
+                            
+                            # datetime이 있는 경우 처리
                             elif 'dateTime' in sub_event.get('start', {}):
-                                processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
-                                processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
-                                processed_event['start_date'] = processed_event['start_dateTime'].strftime('%Y-%m-%d')
-                                processed_event['end_date'] = processed_event['end_dateTime'].strftime('%Y-%m-%d')
-
+                                event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+                                end_time = datetime.fromisoformat(sub_event['end']['dateTime'])
+                                
+                                # start와 end 객체에 date 추가
+                                processed_sub_event['start']['date'] = event_time.strftime('%Y-%m-%d')
+                                processed_sub_event['end']['date'] = end_time.strftime('%Y-%m-%d')
+                                
                                 # 종료 시간이 자정인 경우 처리
-                                if processed_event['end_dateTime'].time() == datetime.min.time():
-                                    processed_event['end_dateTime'] = processed_event['end_dateTime'] - timedelta(seconds=1)
-                                    processed_event['end_date'] = (processed_event['end_dateTime'] - timedelta(days=1)).strftime('%Y-%m-%d')
-
-                        preprocessed_events.append(processed_event)
-                  
-            except Exception as e:
-                logger.error(f"[이벤트 전처리 오류] {str(e)}")
-        
-        logger.info(f"[전처리 된 데이터 샘플]\n{preprocessed_events[:2]}")  # 처음 2개만 로깅
-        
-        # 4. 조회 기간 필터링
-        filtered_events = [
-            event for event in preprocessed_events
-            if event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')
-        ]
+                                if end_time.time() == datetime.min.time():
+                                    end_time = end_time - timedelta(seconds=1)
+                                    processed_sub_event['end']['date'] = (end_time - timedelta(days=1)).strftime('%Y-%m-%d')
+                            
+                            # 이벤트 시간이 이번 주에 속하는지 확인
+                            if this_week_start <= event_time <= this_week_end:
+                                filtered_events.append(processed_sub_event)
+                                
+            except Exception as sub_e:
+                logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
+                continue
         # for event in raw_events:
         #     try:
         #         if 'events' in event:  # events 배열이 있는 경우
