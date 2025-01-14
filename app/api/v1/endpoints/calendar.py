@@ -186,7 +186,7 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
 
     # 갓생지수 계산    
     godLifeidx = godLifeIndex(processed_data.get("data", []))
-    calendar_logger.info("갓생지수: {godLifeidx}")
+    calendar_logger.info(f"갓생지수: {godLifeidx}")
     if godLifeidx < 4:
         calendar_logger.info("갓생이 아닙니다.")
         return {"success": True, "godLifeBar": 0}
@@ -232,12 +232,12 @@ async def get_category(current_user: User = Depends(get_current_user)):
     const exampleCategoryDistribution = {
         "success": true,
         "categories": [
-            { "category": "Work", "entry_number": 35 },
-            { "category": "Exercise", "entry_number": 20 },
-            { "category": "Study", "entry_number": 15 },
-            { "category": "Leisure", "entry_number": 10 },
-            { "category": "Social", "entry_number": 8 },
-            { "category": "Other", "entry_number": 5 }
+            { "category": "Work", "entry_number": 35 , "summary": "예예"},
+            { "category": "Exercise", "entry_number": 20 , "summary": "예예"},
+            { "category": "Study", "entry_number": 15 , "summary": "예예"},
+            { "category": "Leisure", "entry_number": 10 , "summary": "예예"},
+            { "category": "Social", "entry_number": 8 , "summary": "예예"},
+            { "category": "Other", "entry_number": 5 , "summary": "예예"}
         ]
     }
 
