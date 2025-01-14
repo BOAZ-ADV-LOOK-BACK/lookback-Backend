@@ -403,13 +403,13 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                             
                             # datetime이 있는 경우 처리
                             elif 'dateTime' in sub_event.get('start', {}):
-                                start_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+                                event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
                                 end_time = datetime.fromisoformat(sub_event['end']['dateTime'])
                                 
                                 # start와 end 객체에 date 추가
-                                processed_sub_event['start']['date'] = start_time.strftime('%Y-%m-%d')
+                                processed_sub_event['start']['date'] = event_time.strftime('%Y-%m-%d')
                                 processed_sub_event['end']['date'] = end_time.strftime('%Y-%m-%d')
-                                event_time = pytz.UTC.localize(processed_sub_event['start']['date'])
+
                                 # 종료 시간이 자정인 경우 처리
                                 if end_time.time() == datetime.min.time():
                                     end_time = end_time - timedelta(seconds=1)
