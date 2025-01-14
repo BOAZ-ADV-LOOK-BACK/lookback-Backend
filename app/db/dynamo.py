@@ -398,16 +398,16 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                             if 'date' in sub_event.get('start', {}):
                                 start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
                                 end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
-                                start_date = pytz.UTC.localize(start_date)
-                                event_time = start_date
+                                event_time = start_date.strftime('%Y-%m-%d')
                             
                             # datetime이 있는 경우 처리
                             elif 'dateTime' in sub_event.get('start', {}):
                                 event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
                                 end_time = datetime.fromisoformat(sub_event['end']['dateTime'])
-                                
+                                event_date = event_time.strftime('%Y-%m-%d')
+
                                 # start와 end 객체에 date 추가
-                                processed_sub_event['start']['date'] = event_time.strftime('%Y-%m-%d')
+                                processed_sub_event['start']['date'] = event_time
                                 processed_sub_event['end']['date'] = end_time.strftime('%Y-%m-%d')
 
                                 # 종료 시간이 자정인 경우 처리
@@ -416,10 +416,11 @@ async def get_weekly_activity_data(user_email: str) -> dict:
                                     processed_sub_event['end']['date'] = (end_time - timedelta(days=1)).strftime('%Y-%m-%d')
                             
                             # 이벤트 시간이 이번 주에 속하는지 확인
-                            if this_week_start.strftime('%Y-%m-%d') <= event_time <= this_week_end.strftime('%Y-%m-%d'):
-                            # this_week_start <= event_time <= this_week_end:
+                            week_start = this_week_start.strftime('%Y-%m-%d')
+                            week_end = this_week_end.strftime('%Y-%m-%d')
+                            if week_start <= event_date <= week_end:
                                 filtered_events.append(processed_sub_event)
-                                
+
             except Exception as sub_e:
                 logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
                 continue
