@@ -170,6 +170,27 @@ async def get_dashboard_data(code):
     # 2번에서 전처리 한 결과 리턴해주면 됨
     # 향후 프론트에서 이 데이터 받아서 알아서 잘 각 시각화 component에 잘 매핑
 
+#캘린더 별 활동 시간 API
+@router.post("/dashboard-spendingTime")
+async def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
+
+    duration_by_calendar = await sum_time_by_calendar(current_user)
+
+    return {"success": True, "spendingTime": duration_by_calendar}
+
+async def sum_time_by_calendar(user):
+    
+    user_duration_time = {}
+    
+    # 사용자 캘린더 리스트 가져오기 
+    user_cal_list = await get_calendar_list_by_user(user)
+    
+    for calendar in user_cal_list:
+        summary = calendar['summary']
+        cal_id = calendar['id']
+        user_duration_time[summary] = get_user_event(cal_id)
+    
+    return user_duration_time
 
 # 갓생지수 API
 @router.post("/dashboard-godLifeBar")
