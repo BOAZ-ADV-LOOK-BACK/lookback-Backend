@@ -175,6 +175,8 @@ async def get_dashboard_data(code):
 async def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
 
     duration_by_calendar = await sum_time_by_calendar(current_user)
+    
+    calendar_logger.info("캘린더별 활동 시간 확인 완료")
 
     return {"success": True, "spendingTime": duration_by_calendar}
 
