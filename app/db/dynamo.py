@@ -32,6 +32,8 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
     
     table = dynamodb_client.Table('lookback-calendar-events')
     
+    this_week_events_time = 0.0
+    
     response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
     
