@@ -187,6 +187,8 @@ async def sum_time_by_calendar(user):
     # 사용자 캘린더 리스트 가져오기 
     user_cal_list = await get_calendar_list_by_user(user)
     
+    calendar_logger.info("사용자 캘린더 리스트 가져오기 성공:", user_cal_list )
+    
     for calendar in user_cal_list:
         summary = calendar['summary']
         cal_id = calendar['id']
