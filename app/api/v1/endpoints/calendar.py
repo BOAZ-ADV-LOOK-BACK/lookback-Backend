@@ -176,7 +176,7 @@ async def get_spending_time_of_sum(current_user: User = Depends(get_current_user
 
     duration_by_calendar = await sum_time_by_calendar(current_user)
     
-    calendar_logger.info("캘린더별 활동 시간 확인 완료:", duration_by_calendar)
+    calendar_logger.info(f"캘린더별 활동 시간 확인 완료:{duration_by_calendar}")
 
     return {"success": True, "spendingTime": duration_by_calendar}
 
@@ -187,7 +187,7 @@ async def sum_time_by_calendar(user):
     # 사용자 캘린더 리스트 가져오기 
     user_cal_list = await get_calendar_list_by_user(user)
     
-    calendar_logger.info("사용자 캘린더 리스트 가져오기 성공:", user_cal_list )
+    calendar_logger.info(f"사용자 캘린더 리스트 가져오기 성공: {user_cal_list}")
     
     for calendar in user_cal_list:
         summary = calendar['summary']
