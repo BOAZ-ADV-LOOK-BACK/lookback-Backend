@@ -40,6 +40,8 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
     for item in items:
         this_week_events_time = filter_this_week(item['events'])
         
+    logger.info("사용자 캘린더별 활동 시간 이번주 필터링 완료")
+        
     return this_week_events_time 
             
             
