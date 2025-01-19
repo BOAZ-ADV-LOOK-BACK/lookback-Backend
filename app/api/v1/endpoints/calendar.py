@@ -174,7 +174,7 @@ async def get_dashboard_data(code):
 @router.post("/dashboard-spendingTime")
 async def get_spending_time_of_sum(current_user: User = Depends(get_current_user)):
 
-    duration_by_calendar = await sum_time_by_calendar(current_user)
+    duration_by_calendar = await sum_time_by_calendar(current_user.email)
     
     calendar_logger.info(f"캘린더별 활동 시간 확인 완료:{duration_by_calendar}")
 
@@ -192,7 +192,7 @@ async def sum_time_by_calendar(user):
     for calendar in user_cal_list:
         summary = calendar['summary']
         cal_id = calendar['id']
-        user_duration_time[summary] = get_user_event(cal_id)
+        user_duration_time[summary] = await get_user_event(user, cal_id)
     
     return user_duration_time
 
