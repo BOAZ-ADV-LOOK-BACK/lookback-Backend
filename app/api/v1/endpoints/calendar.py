@@ -196,6 +196,17 @@ async def sum_time_by_calendar(user):
     
     return user_duration_time
 
+
+#upcomming scheduleAPI
+@router.post('/dashboard-upcomming-schedule')
+async def user_upcomming_events(current_user: User = Depends(get_current_user)):
+    
+    user_upcomming_evnets_list = await upcomming_event_dict(current_user.email)
+    
+    
+    return {"success": True, "upcommingList": user_upcomming_evnets_list}
+    
+
 # 갓생지수 API
 @router.post("/dashboard-godLifeBar")
 async def get_godLife_bar(current_user: User = Depends(get_current_user)):
