@@ -8,6 +8,8 @@ from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer
 from boto3.dynamodb.conditions import Key
 from app.api.v1.endpoints.google import get_calendar_events
+from datetime import datetime, timedelta, timezone
+from dateutil.parser import parse
 from dotenv import load_dotenv
 import boto3
 import os
@@ -87,6 +89,69 @@ def filter_this_week(events):
             
         
     return duration_time
+
+
+async def upcomming_event_dict(user_email: str) -> list:
+    
+    #캘린더 데이터 저장할 리스트 -> 이중 리스트 형태가 됨 
+    calendar_data_list = []
+    
+    #사용자 캘린더 리스트 가져오기 
+    cal_list = await get_calendar_list_by_user(user_email)
+    
+    table = dynamodb_client.Table('lookback-calendar-events')
+    
+    
+    for cal_id in cal_list:
+        response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
+        
+        #캘린더 데이터 가져오기 
+        items = response['Items']
+        
+        for item in items:
+            calendar_data_list.append(item['events'])
+            
+    
+    this_week_uppcoming = find_uppcoming_events(calendar_data_list)
+    
+    return this_week_uppcoming
+
+
+def find_uppcoming_events(calendar_data_list:list ) -> list:
+    
+    result = []
+    
+    sorted_data = [sorted(sublist, key=get_start_datetime, reverse=True) for sublist in calendar_data_list]
+    
+    for data in sorted_data[:5]:
+        for event_list in data:
+            start_time = event_list['start'].get('dateTime') or event_list['start'].get('date')
+            category = event_list.get('organizer', {}).get('displayName')
+            summary = event_list.get('summary')
+
+            # 딕셔너리 생성
+            event_info = {
+                'Time': start_time,
+                'Event Name': summary, 
+                'category': category
+            }
+
+            # 결과 리스트에 추가
+            result.append(event_info)
+    
+    return result
+
+def get_start_datetime(event):
+    start = event.get('start', {})
+    if 'dateTime' in start:  # dateTime이 있으면 사용
+        return parse(start['dateTime'])
+    elif 'date' in start:  # date만 있으면 UTC 기준 자정으로 설정
+        date_only = parse(start['date']).replace(tzinfo=timezone.utc)  # UTC 시간대 설정
+        return date_only
+    
+    return datetime.min.replace(tzinfo=timezone.utc)  # 시작 날짜가 없으면 최소값 반환
+  
 
 def create_dynamodb_data(user_email: str, cal_list: dict) -> dict:
    """
