@@ -355,7 +355,7 @@ async def get_calendar_schedule(current_user: User = Depends(get_current_user)):
 
         return {
             "success": True,
-            "data": get_monthly_activity_data_per_user(current_user.email)
+            "data": await get_monthly_activity_data_per_user(current_user.email)
         }
 
     except Exception as e:
