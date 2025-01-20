@@ -122,23 +122,22 @@ def find_uppcoming_events(calendar_data_list:list ) -> list:
     
     result = []
     
-    sorted_data = [sorted(sublist, key=get_start_datetime, reverse=True) for sublist in calendar_data_list]
+    flatten_data = [item for sublist in calendar_data_list for item in sublist]
+    sorted_data = sorted(flatten_data, key=get_start_datetime, reverse=True)
     
     for data in sorted_data[:5]:
-        for event_list in data:
-            start_time = event_list['start'].get('dateTime') or event_list['start'].get('date')
-            category = event_list.get('organizer', {}).get('displayName')
-            summary = event_list.get('summary')
-
-            # 딕셔너리 생성
-            event_info = {
-                'Time': start_time,
-                'Event Name': summary, 
-                'category': category
+        start_time = data['start'].get('dateTime') or data['start'].get('date')
+        category = data.get('organizer', {}).get('displayName')
+        summary = data.get('summary')
+    
+        # 딕셔너리 생성
+        event_info = {
+            'Time': start_time,
+            'name': summary, 
+            'category': category
             }
-
-            # 결과 리스트에 추가
-            result.append(event_info)
+        
+        result.append(event_info)
     
     return result
 
