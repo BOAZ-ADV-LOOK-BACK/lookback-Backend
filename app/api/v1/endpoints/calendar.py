@@ -203,6 +203,7 @@ async def user_upcomming_events(current_user: User = Depends(get_current_user)):
     
     user_upcomming_evnets_list = await upcomming_event_dict(current_user.email)
     
+    calendar_logger.info(f"곧 다가오는 스케줄: {user_upcomming_evnets_list)}")
     
     return {"success": True, "upcommingList": user_upcomming_evnets_list}
     
