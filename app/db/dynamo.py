@@ -42,8 +42,7 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
     items = response['Items']
     
     for item in items:
-        if item['events']:
-            this_week_events_time = filter_this_week(item['events'])
+        this_week_events_time = filter_this_week(item['events'])
         
     logger.info("사용자 캘린더별 활동 시간 이번주 필터링 완료")
     
@@ -53,7 +52,7 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
 ###사용자 캘린더 중 이번주에 해당하는 것만 필터링
 def filter_this_week(events):
     
-    duration_time = 0 
+    duration_time = 0.0
     korea_tz = pytz.timezone("Asia/Seoul")
     now_korea = datetime.now(korea_tz)
     
@@ -61,29 +60,38 @@ def filter_this_week(events):
     end_of_week = start_of_week + timedelta(days=6)
     
     for event in events:
-        if 'dateTime' in event['start']:
-            start = datetime.strptime(event['start']['dateTime'][:10], '%Y-%m-%d').date()
-            start_time = event['start']['dateTime']
+        try:
+            if 'start' not in event:
+                continue
             
-            #일정 시작 시간 추출
-            start_time = datetime.fromisoformat(start_time)
-        else:
-            start = datetime.strptime(event['start']['date'], '%Y-%m-%d').date()
-            
-        if 'dateTime' in event['end']:
-            end = datetime.strptime(event['end']['dateTime'][:10] , '%Y-%m-%d').date()
-            end_time = event['end']['dateTime']
-            end_time = datetime.fromisoformat(end_time)
-        else:
-            end = datetime.strptime(event['end']['date'], '%Y-%m-%d').date()
-            
-        if start_of_week <= start <= end_of_week or start_of_week <= end <= end_of_week:
-            try:
-                duration_time += (end_time - start_time).total_seconds() / 60
-            except Exception as e:
-                print('error call ')
+            if 'dateTime' in event['start']:
+                start = datetime.strptime(event['start']['dateTime'][:10], '%Y-%m-%d').date()
+                start_time = event['start']['dateTime']
                 
-                print(f'error:{e}')
+                #일정 시작 시간 추출
+                start_time = datetime.fromisoformat(start_time)
+            else:
+                start = datetime.strptime(event['start']['date'], '%Y-%m-%d').date()
+                
+            if 'end' not in event:
+                continue
+                
+            if 'dateTime' in event['end']:
+                end = datetime.strptime(event['end']['dateTime'][:10] , '%Y-%m-%d').date()
+                end_time = event['end']['dateTime']
+                end_time = datetime.fromisoformat(end_time)
+            else:
+                end = datetime.strptime(event['end']['date'], '%Y-%m-%d').date()
+                
+            if start_of_week <= start <= end_of_week or start_of_week <= end <= end_of_week:
+                try:
+                    duration_time += (end_time - start_time).total_seconds() / 60
+                except Exception as e:
+                    print('error call ')
+                    
+                    print(f'error:{e}')
+        except Exception as e:
+            print(f'일정 처리 중 에러 발생: {e}')
             
         
     return duration_time
