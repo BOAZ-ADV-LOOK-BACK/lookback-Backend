@@ -392,6 +392,101 @@ async def get_weekly_activity_data_per_user(user_email: str) -> dict:
         logger.error(f"전체 오류 내용: {traceback.format_exc()}")
         return {'events': [], 'this_week_start': None}
 
+async def get_monthly_activity_data_per_user(user_email: str) -> dict:
+    '''
+        {
+  "events": [
+    {
+      "start": {
+        "date": "2025-01-01",    // 이벤트 시작 날짜 (date 또는 datetime 형태)
+        "dateTime": "2025-01-01T09:00:00+00:00"   // datetime이 있는 경우
+      },
+      "end": {
+        "date": "2025-01-01",      // 이벤트 종료 날짜 (date 또는 datetime 형태)
+        "dateTime": "2025-01-01T10:00:00+00:00"   // datetime이 있는 경우
+      },
+      "summary": "Event Summary",   // 이벤트 제목
+      "description": "Event Description", // 이벤트 설명 (옵션)
+      "location": "Event Location", // 이벤트 위치 (옵션)
+      "id": "unique-event-id"      // 이벤트의 고유 ID (옵션)
+    },
+    ...
+  ],
+  "this_month_start": "2025-01-01T00:00:00+00:00"  // 이번 달 시작 날짜 (ISO 8601 형식)
+}
+    '''
+    table = dynamodb_client.Table("lookback-calendar-events")
+    
+    try:
+        # 1. 조회 기간 설정 (이번 달의 시작과 끝 날짜 계산)
+        today = datetime.now(pytz.UTC)
+        first_day_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_day_of_month = (first_day_of_month.replace(month=today.month + 1, day=1) - timedelta(days=1))
+
+        logger.info(f"[조회 기간] {first_day_of_month.strftime('%Y-%m-%d %H:%M')} ~ {last_day_of_month.strftime('%Y-%m-%d %H:%M')}")
+
+        # 2. 데이터 조회
+        response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_email)  # 사용자 이메일로 필터링
+        )
+        raw_events = response.get('Items', [])
+        logger.info(f"[전체 데이터 수] {len(raw_events)}개")
+
+        filtered_events = []
+        for event in raw_events:
+            try:
+                if 'events' in event:
+                    for sub_event in event['events']:
+                        processed_sub_event = sub_event.copy()  # 원본 이벤트 복사
+                        
+                        if 'start' in sub_event:
+                            # 날짜만 있는 경우 처리
+                            if 'date' in sub_event.get('start', {}):
+                                start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
+                                end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
+                                event_date = start_date.strftime('%Y-%m-%d')
+                            
+                            # datetime이 있는 경우 처리
+                            elif 'dateTime' in sub_event.get('start', {}):
+                                event_time = datetime.fromisoformat(sub_event['start']['dateTime'])
+                                end_time = datetime.fromisoformat(sub_event['end']['dateTime'])
+                                event_date = event_time.strftime('%Y-%m-%d')
+
+                                # start와 end 객체에 date 추가
+                                processed_sub_event['start']['date'] = event_date
+                                processed_sub_event['end']['date'] = end_time.strftime('%Y-%m-%d')
+
+                                # 종료 시간이 자정인 경우 처리
+                                if end_time.time() == datetime.min.time():
+                                    end_time = end_time - timedelta(seconds=1)
+                                    processed_sub_event['end']['date'] = (end_time - timedelta(days=1)).strftime('%Y-%m-%d')
+
+                            # 이벤트 시간이 이번 달에 속하는지 확인
+                            month_start = first_day_of_month.strftime('%Y-%m-%d')
+                            month_end = last_day_of_month.strftime('%Y-%m-%d')
+
+                            if month_start <= event_date <= month_end:
+                                filtered_events.append(processed_sub_event)
+
+            except Exception as sub_e:
+                logger.error(f"이벤트 처리 중 오류: {str(sub_e)}")
+                continue
+
+        logger.info(f"[필터링 후 데이터 수] {len(filtered_events)}개")
+        logger.info(f"[필터링 된 데이터 샘플]\n{filtered_events[:2]}")  # 처음 2개만 로깅
+        
+        result = {
+            'events': filtered_events,
+            'this_month_start': first_day_of_month.isoformat()
+        }
+
+        return result
+        
+    except Exception as e:
+        logger.error(f"조회 중 오류: {str(e)}")
+        logger.error(f"전체 오류 내용: {traceback.format_exc()}")
+        return {'events': [], 'this_month_start': None}
+
 async def get_weekly_activity_data(user_email: str) -> dict:
     table = dynamodb_client.Table("lookback-calendar-events")
     
@@ -410,54 +505,7 @@ async def get_weekly_activity_data(user_email: str) -> dict:
         response = table.scan()
         raw_events = response.get('Items', [])
         logger.info(f"[전체 데이터 수] {len(raw_events)}개")
-        # logger.info(f"[데이터 구조 확인] {raw_events[:2]}")  # 두 번째 데이터의 구조 확인
 
-        # 3. 데이터 전처리
-        # preprocessed_events = []
-        # for event in raw_events:
-        #     try:
-        #         if 'events' in event:
-        #             for sub_event in event['events']:
-        #                 processed_event = {
-        #                     'summary': sub_event.get('summary'),
-        #                     'start_date': None,
-        #                     'end_date': None,
-        #                     'start_dateTime': None,
-        #                     'end_dateTime': None,
-        #                     'sequence': sub_event.get('sequence'),
-        #                     'description': sub_event.get('description')
-        #                 }
-        #                 # 이벤트의 시작 시간이 날짜만 있는 경우 처리
-        #                 if 'start' in sub_event:
-        #                     if 'date' in sub_event.get('start', {}):
-        #                         start_date = datetime.strptime(sub_event['start']['date'], '%Y-%m-%d')
-        #                         end_date = datetime.strptime(sub_event['end']['date'], '%Y-%m-%d') - timedelta(days=1)
-        #                         processed_event['start_date'] = start_date.strftime('%Y-%m-%d')
-        #                         processed_event['end_date'] = end_date.strftime('%Y-%m-%d')
-        #                     elif 'dateTime' in sub_event.get('start', {}):
-        #                         processed_event['start_dateTime'] = datetime.fromisoformat(sub_event['start']['dateTime'])
-        #                         processed_event['end_dateTime'] = datetime.fromisoformat(sub_event['end']['dateTime'])
-        #                         processed_event['start_date'] = processed_event['start_dateTime'].strftime('%Y-%m-%d')
-        #                         processed_event['end_date'] = processed_event['end_dateTime'].strftime('%Y-%m-%d')
-
-        #                         # 종료 시간이 자정인 경우 처리
-        #                         if processed_event['end_dateTime'].time() == datetime.min.time():
-        #                             processed_event['end_dateTime'] = processed_event['end_dateTime'] - timedelta(seconds=1)
-        #                             processed_event['end_date'] = (processed_event['end_dateTime'] - timedelta(days=1)).strftime('%Y-%m-%d')
-
-        #                 preprocessed_events.append(processed_event)
-                  
-        #     except Exception as e:
-        #         logger.error(f"[이벤트 전처리 오류] {str(e)}")
-        
-        # logger.info(f"[전처리 된 데이터 샘플]\n{preprocessed_events[:2]}")  # 처음 2개만 로깅
-        
-        # # 4. 조회 기간 필터링
-        # filtered_events = [
-        #     event for event in preprocessed_events
-        #     if event['start_date'] and this_week_start.strftime('%Y-%m-%d') <= event['start_date'] <= this_week_end.strftime('%Y-%m-%d')
-        # ]
-        # 3. 필터링된 이벤트 처리
         filtered_events = []
         for event in raw_events:
             try:
