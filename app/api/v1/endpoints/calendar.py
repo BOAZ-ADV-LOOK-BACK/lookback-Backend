@@ -352,11 +352,8 @@ async def get_calendar_schedule(current_user: User = Depends(get_current_user)):
         calendar_logger.info("월간 일정 데이터 로딩 시작...")
         calendar_logger.info(f"사용자 {current_user.email}의 월간 활동 데이터 요청")
 
-
-        return {
-            "success": True,
-            "data": await get_monthly_activity_data_per_user(current_user.email)
-        }
+        data = await get_monthly_activity_data_per_user(current_user.email)
+        return data
 
     except Exception as e:
         calendar_logger.error(f"월간 일정 데이터 로딩 중 예기치 않은 오류 발생: {str(e)}")
