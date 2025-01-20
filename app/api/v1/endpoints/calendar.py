@@ -334,6 +334,25 @@ async def get_category(current_user: User = Depends(get_current_user)):
         }
 
 
+@router.post("/dashboard-calendar-schedule")
+async def get_calendar_schedule(current_user: User = Depends(get_current_user)):
+    try:
+        calendar_logger.info("월간 일정 데이터 로딩 시작...")
+        calendar_logger.info(f"사용자 {current_user.email}의 월간 활동 데이터 요청")
+
+
+        return {
+            "success": True,
+            "data": get_monthly_activity_data_per_user(current_user.email)
+        }
+
+    except Exception as e:
+        calendar_logger.error(f"월간 일정 데이터 로딩 중 예기치 않은 오류 발생: {str(e)}")
+        return {
+            "success": False,
+            "error_message": f"오류가 발생했습니다: {str(e)}"
+        }
+
 
 
 #### 켈린더 데이터 전처리 함수
@@ -427,3 +446,5 @@ async def get_weekly_activity(current_user: User = Depends(get_current_user)):
             status_code=500,
             detail="주간 활동 데이터 조회 실패"
         )
+    
+
