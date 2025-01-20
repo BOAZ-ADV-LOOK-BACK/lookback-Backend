@@ -42,14 +42,12 @@ async def get_user_event(user_email: str, cal_id: str) -> float:
     items = response['Items']
     
     for item in items:
-        this_week_events_time = filter_this_week(item['events'])
+        if item['events']:
+            this_week_events_time = filter_this_week(item['events'])
         
     logger.info("사용자 캘린더별 활동 시간 이번주 필터링 완료")
     
-    if this_week_events_time:
-        return this_week_events_time 
-    else:
-        return 0.0
+    return this_week_events_time
             
             
 ###사용자 캘린더 중 이번주에 해당하는 것만 필터링
