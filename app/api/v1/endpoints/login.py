@@ -108,7 +108,7 @@ async def google_login(
                user, is_new_user = await get_or_create_user(
                    db,
                    email=user_info["email"],
-                   name=user_info.get("name", ""),
+                   name=user_info["name"],
                    google_id=user_info["id"],
                    refresh_token=token_info.get('refresh_token')
                )
