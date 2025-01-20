@@ -113,6 +113,7 @@ async def google_login(
                    refresh_token=token_info.get('refresh_token')
                )
                logger.info(f"사용자 {'생성' if is_new_user else '조회'} 완료")
+               logger.info(f"사용자 정보: {user}")
            except Exception as e:
                logger.error(f"사용자 정보 처리 중 오류 발생: {str(e)}")
                logger.error(f"상세 에러: {traceback.format_exc()}")
