@@ -196,6 +196,15 @@ async def sum_time_by_calendar(user):
     
     return user_duration_time
 
+#요일별 일정 개수API
+@router.post('/dashboard-by-day-events')
+async def user_by_day_event(current_user: User = Depends(get_current_user)):
+    
+    user_day_event_count = await find_one_week_event(current_user.email)
+    
+    calendar_logger.info(f'사용자 요일별 일정 개수:{user_day_event_count}')
+    
+    return {"success": True, "upcommingList": user_day_event_count}
 
 #upcomming scheduleAPI
 @router.post('/dashboard-upcomming-schedule')
