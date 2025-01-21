@@ -137,10 +137,13 @@ async def find_one_week_event(user_email: str) -> dict:
 
 
 def find_one_week():
-    todayy = dt.date.today()
-    one_week = [todayy - dt.timedelta(days=i) for i in range(8)]
+    today = dt.date.today()
+    this_week_monday = today - dt.timedelta(days=today.weekday())
+    last_week_monday = this_week_monday - dt.timedelta(days=7)
     
-    return one_week
+    last_week = [(last_week_monday + dt.timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    
+    return last_week
 
 
 async def upcomming_event_dict(user_email: str) -> list:
