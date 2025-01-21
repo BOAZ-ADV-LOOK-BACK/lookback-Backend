@@ -204,7 +204,7 @@ async def user_by_day_event(current_user: User = Depends(get_current_user)):
     
     calendar_logger.info(f'사용자 요일별 일정 개수:{user_day_event_count}')
     
-    return {"success": True, "upcommingList": user_day_event_count}
+    return {"success": True, "user_day_event_count": user_day_event_count}
 
 #upcomming scheduleAPI
 @router.post('/dashboard-upcomming-schedule')
