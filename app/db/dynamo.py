@@ -108,7 +108,8 @@ async def upcomming_event_dict(user_email: str) -> list:
     table = dynamodb_client.Table('lookback-calendar-events')
     
     
-    for cal_id in cal_list:
+    for cal in cal_list:
+        cal_id = cal['id']
         response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
         
@@ -138,7 +139,7 @@ def find_uppcoming_events(calendar_data_list:list ) -> list:
     
         # 딕셔너리 생성
         event_info = {
-            'Time': start_time,
+            'time': start_time,
             'name': summary, 
             'category': category
             }
