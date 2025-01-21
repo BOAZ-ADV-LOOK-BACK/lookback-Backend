@@ -138,7 +138,7 @@ async def find_one_week_event(user_email: str) -> dict:
 
 def find_one_week():
     todayy = dt.date.today()
-    one_week = [todayy + dt.timedelta(days=i) for i in range(7)]
+    one_week = [todayy - dt.timedelta(days=i) for i in range(8)]
     
     return one_week
 
