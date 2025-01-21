@@ -141,7 +141,7 @@ def find_one_week():
     this_week_monday = today - dt.timedelta(days=today.weekday())
     last_week_monday = this_week_monday - dt.timedelta(days=7)
     
-    last_week = [(last_week_monday + dt.timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    last_week = [(last_week_monday + dt.timedelta(days=i)) for i in range(7)]
     
     return last_week
 
