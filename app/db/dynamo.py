@@ -116,7 +116,7 @@ async def find_one_week_event(user_email: str) -> dict:
     for cal in cal_list:
         cal_id = cal['id']
         response = table.query(
-            KeyConditionExpression=Key('user_id').eq('ryeon0107@gmail.com') & Key('calendar_id').eq(cal_id))
+            KeyConditionExpression=Key('user_id').eq('user_email') & Key('calendar_id').eq(cal_id))
         
         print(f'현재 id:{id}')
         
