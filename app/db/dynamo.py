@@ -122,16 +122,19 @@ async def find_one_week_event(user_email: str) -> dict:
         
         #캘린더 데이터 가져오기 
         items = response['Items']
-        for item in items:
-            events = item['events']
-            for event in events:
-                event_date = event['start'].get('dateTime') or event['start'].get('date')
-                date_obj = datetime.fromisoformat(event_date)
-                # 날짜만 추출해서 출력 (YYYY-MM-DD 형식)
-                date_only = str(date_obj.date()) # datetime.date 객체로 변환
-                if date_only in week_datetime:
-                    #print(date_only)
-                    weekday_event_count[week_datetime[date_only]] +=1
+        try:
+            for item in items:
+                events = item['events']
+                for event in events:
+                    event_date = event['start'].get('dateTime') or event['start'].get('date')
+                    date_obj = datetime.fromisoformat(event_date)
+                    # 날짜만 추출해서 출력 (YYYY-MM-DD 형식)
+                    date_only = str(date_obj.date()) # datetime.date 객체로 변환
+                    if date_only in week_datetime:
+                        #print(date_only)
+                        weekday_event_count[week_datetime[date_only]] +=1
+        except:
+            pass
     
     return weekday_event_count
 
