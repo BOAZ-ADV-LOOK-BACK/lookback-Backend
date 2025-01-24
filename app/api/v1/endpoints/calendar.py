@@ -332,7 +332,7 @@ async def get_category(current_user: User = Depends(get_current_user)):
         category_distribution = [
             {
                 "category": cal_id,
-                "summary": calendar_ids.get(cal_id, "정보 없음"),  # summary가 없을 경우 '정보 없음'으로 처리
+                "summary": calendar_ids.get(cal_id, ""),  # summary가 없을 경우 '' (빈칸)으로 처리
                 "entry_number": count
             }
             for cal_id, count in sorted_categories
