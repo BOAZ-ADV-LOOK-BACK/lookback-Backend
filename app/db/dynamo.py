@@ -16,6 +16,7 @@ import os
 import asyncio
 import logging
 import httpx
+import datetime as dt
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,6 +97,57 @@ def filter_this_week(events):
         
     return duration_time
 
+async def find_one_week_event(user_email: str) -> dict:
+    
+    #오늘 기준 일주일 구하기 
+    one_week = find_one_week()
+    
+    #{date:요일} 딕셔너리 선언
+    week_datetime = {date.strftime("%Y-%m-%d"): date.strftime("%A") for date in one_week}
+    
+    #{요일:0} 딕셔너리 선언 
+    weekday_event_count = {weekday: 0 for weekday in week_datetime.values()}
+    
+    #사용자 캘린더 리스트 가져오기 
+    cal_list = await get_calendar_list_by_user(user_email)
+    
+    table = dynamodb_client.Table('lookback-calendar-events')
+    
+    for cal in cal_list:
+        cal_id = cal['id']
+        response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
+        
+        print(f'현재 id:{id}')
+        
+        #캘린더 데이터 가져오기 
+        items = response['Items']
+        try:
+            for item in items:
+                events = item['events']
+                for event in events:
+                    event_date = event['start'].get('dateTime') or event['start'].get('date')
+                    date_obj = datetime.fromisoformat(event_date)
+                    # 날짜만 추출해서 출력 (YYYY-MM-DD 형식)
+                    date_only = str(date_obj.date()) # datetime.date 객체로 변환
+                    if date_only in week_datetime:
+                        #print(date_only)
+                        weekday_event_count[week_datetime[date_only]] +=1
+        except:
+            pass
+    
+    return weekday_event_count
+
+
+def find_one_week():
+    today = dt.date.today()
+    this_week_monday = today - dt.timedelta(days=today.weekday())
+    last_week_monday = this_week_monday - dt.timedelta(days=7)
+    
+    last_week = [(last_week_monday + dt.timedelta(days=i)) for i in range(7)]
+    
+    return last_week
+
 
 async def upcomming_event_dict(user_email: str) -> list:
     
@@ -108,7 +160,8 @@ async def upcomming_event_dict(user_email: str) -> list:
     table = dynamodb_client.Table('lookback-calendar-events')
     
     
-    for cal_id in cal_list:
+    for cal in cal_list:
+        cal_id = cal['id']
         response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
         
@@ -138,7 +191,7 @@ def find_uppcoming_events(calendar_data_list:list ) -> list:
     
         # 딕셔너리 생성
         event_info = {
-            'Time': start_time,
+            'time': start_time,
             'name': summary, 
             'category': category
             }
@@ -156,6 +209,9 @@ def get_start_datetime(event):
         return date_only
     
     return datetime.min.replace(tzinfo=timezone.utc)  # 시작 날짜가 없으면 최소값 반환
+
+
+    
   
 
 def create_dynamodb_data(user_email: str, cal_list: dict) -> dict:
