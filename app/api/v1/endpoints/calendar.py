@@ -231,8 +231,7 @@ async def get_godLife_bar(current_user: User = Depends(get_current_user)):
     calendar_logger.info("갓생지수 데이터 전송 완료...")
     
     # 갓생지수 퍼센트 반환
-    godLifePercent = godLifeidx / 7 * 100
-    return {"success": True, "godLifeIdx": godLifePercent}
+    return {"success": True, "godLifeBar": godLifeidx}
 
 
 ## 갓생지수 판정 함수
