@@ -118,7 +118,7 @@ async def find_one_week_event(user_email: str) -> dict:
         response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_email) & Key('calendar_id').eq(cal_id))
         
-        print(f'현재 id:{id}')
+        print(f'현재 id:{cal_id}')
         
         #캘린더 데이터 가져오기 
         items = response['Items']
@@ -133,8 +133,9 @@ async def find_one_week_event(user_email: str) -> dict:
                     if date_only in week_datetime:
                         #print(date_only)
                         weekday_event_count[week_datetime[date_only]] +=1
-        except:
-            pass
+                        print(f"요일별 데이터:{weekday_event_count}")
+        except Exception as e:
+            print(f"Error processing item: {e}")
     
     return weekday_event_count
 
